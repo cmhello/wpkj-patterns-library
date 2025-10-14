@@ -1,0 +1,38 @@
+.wpkj-pl-header-trigger {
+  margin-right: 2rem;
+}
+.wpkj-pl-modal .components-modal__content {
+  display: flex;
+  flex-direction: column;
+}
+.wpkj-pl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.wpkj-pl-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px;
+  background: #fff;
+}
+.wpkj-pl-card-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.wpkj-pl-card-actions {
+  display: flex;
+  gap: 8px;
+}
+.wpkj-pl-footer {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Ensure toolbar button aligns visually (optional enhancement) */
+.edit-post-header__toolbar .components-button[aria-label="Patterns"],
+.edit-post-header__toolbar .components-button.pat-library-button {
+  font-weight: 600;
+}

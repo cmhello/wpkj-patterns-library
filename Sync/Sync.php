@@ -1,0 +1,32 @@
+<?php
+namespace WPKJ\PatternsLibrary\Sync;
+
+use WPKJ\PatternsLibrary\Api\ApiClient;
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+class Sync {
+    public function run_sync() {
+        $api = new ApiClient();
+
+        // Warm up caches for categories and patterns (first page only)
+        $cats = $api->get_categories();
+        $first = $api->get_patterns( [ 'per_page' => 50, 'page' => 1 ] );
+
+        // Optional: prefetch additional pages, but guard by option to avoid overload
+        $prefetch = (int) get_option( 'wpkj_patterns_library_max_register', 200 );
+        $per_page = 100;
+        $page     = 2;
+        $fetched  = is_array( $first ) ? count( $first ) : 0;
+        while ( $fetched < $prefetch ) {
+            $batch = $api->get_patterns( [ 'per_page' => $per_page, 'page' => $page ] );
+            if ( empty( $batch ) ) {
+                break;
+            }
+            $fetched += count( $batch );
+            $page++;
+        }
+    }
+}
