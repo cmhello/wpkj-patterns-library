@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WPKJ Patterns Library
  * Description: Client-side plugin to discover and import block patterns from WPKJ Patterns Manager via REST API.
- * Version: 0.1.0
+ * Version: 0.2.0
  * Author: WPKJ Team
  * Text Domain: wpkj-patterns-library
  * Domain Path: /languages
@@ -27,7 +27,7 @@ if ( ! defined( 'WPKJ_PL_SLUG' ) ) {
     define( 'WPKJ_PL_SLUG', 'wpkj-patterns-library' );
 }
 if ( ! defined( 'WPKJ_PL_VERSION' ) ) {
-    define( 'WPKJ_PL_VERSION', '0.1.0' );
+    define( 'WPKJ_PL_VERSION', '0.2.0' );
 }
 
 // PSR-4 like, lightweight autoloader for this plugin namespace
@@ -65,7 +65,7 @@ spl_autoload_register( function ( $class ) {
 
 // Bootstrap the plugin core
 function wpkj_patterns_library_run() {
-    $plugin = new WPKJ\PatternsLibrary\Includes\Core( 'wpkj-patterns-library', '0.1.0' );
+    $plugin = new WPKJ\PatternsLibrary\Includes\Core( WPKJ_PL_SLUG, WPKJ_PL_VERSION );
     $plugin->run();
 }
 

@@ -30,7 +30,8 @@ class Assets {
 
         $config = [
             'apiBase'        => get_option( 'wpkj_patterns_library_api_base', home_url( '/wp-json/wpkj/v1' ) ),
-            'jwt'            => get_option( 'wpkj_patterns_library_jwt', '' )
+            'jwt'            => get_option( 'wpkj_patterns_library_jwt', '' ),
+            'restNonce'      => wp_create_nonce( 'wp_rest' ),
         ];
         wp_localize_script( 'wpkj-pl-editor', 'WPKJPatternsConfig', $config );
 
