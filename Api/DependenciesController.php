@@ -5,9 +5,13 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/**
+ * Dependencies controller: proxy dependency list from manager to client.
+ */
 class DependenciesController {
     const NAMESPACE = 'wpkj-pl/v1';
 
+    /** Register dependency routes (publicly readable). */
     public function register_routes() {
         register_rest_route( self::NAMESPACE, '/dependencies', [
             [
@@ -18,6 +22,12 @@ class DependenciesController {
         ] );
     }
 
+    /**
+     * Get dependencies: delegate to ApiClient calling manager `/dependencies`.
+     *
+     * @param \WP_REST_Request $request Request object.
+     * @return \WP_REST_Response Response object.
+     */
     public function get_dependencies( $request ) {
         $client = new ApiClient();
         $data = $client->get_dependencies();

@@ -30,6 +30,7 @@
 .wpkj-pl-filter-title { font-weight: 600; margin-bottom: 6px; }
 .wpkj-pl-filter-actions { display: flex; gap: 6px; margin: 6px 0; }
 .wpkj-pl-content { margin-top: 12px; }
+.wpkj-pl-quick { display: none !important; }
 .wpkj-pl-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -61,14 +62,18 @@
   justify-content: center;
   align-items: center;
   gap: 10px;
-  background: rgba(0,0,0,0.45);
+  background: rgba(10,10,10,0.65);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
   opacity: 0;
   transition: opacity .2s ease-in-out;
 }
-.wpkj-pl-card-media:hover .wpkj-pl-card-overlay { opacity: 1; }
+.wpkj-pl-card-media:hover .wpkj-pl-card-overlay,
+.wpkj-pl-card-media:focus-within .wpkj-pl-card-overlay { opacity: 1; }
 .wpkj-pl-card-title {
   font-weight: 600;
-  margin-bottom: 8px;
+  margin: 8px 0 0;
+  text-align: center;
 }
 .wpkj-pl-card-actions {
   display: flex;
@@ -126,4 +131,45 @@
   0% { opacity: .85; }
   50% { opacity: 1; }
   100% { opacity: .85; }
+}
+
+/* Overlay buttons: improve visibility and focus accessibility */
+.wpkj-pl-card-overlay .components-button,
+.wpkj-pl-card-overlay .wpkj-pl-fav-toggle {
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.08);
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.4);
+}
+
+.wpkj-pl-card-overlay .components-button.is-primary {
+  background: #007cba;
+  border-color: #007cba;
+  color: #fff !important;
+}
+
+.wpkj-pl-card-overlay .components-button:focus,
+.wpkj-pl-card-overlay .wpkj-pl-fav-toggle:focus {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 0 0 4px rgba(0,0,0,0.3);
+}
+
+.wpkj-pl-card-overlay a.components-button.is-secondary {
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.85);
+}
+
+.wpkj-pl-fav-toggle {
+  font-size: 16px;
+  line-height: 1;
+  min-width: 36px;
+  text-transform: none;
+}
+
+.wpkj-pl-fav-toggle.is-active {
+  color: #ffb300 !important;
 }
