@@ -43,13 +43,21 @@ class Settings {
         if ( isset( $_GET['synced'] ) ) {
             echo '<div class="notice notice-success"><p>' . esc_html__( 'Sync completed.', 'wpkj-patterns-library' ) . '</p></div>';
         }
+        if ( isset( $_GET['cache_cleared'] ) ) {
+            $removed = isset( $_GET['removed'] ) ? intval( $_GET['removed'] ) : 0;
+            echo '<div class="notice notice-success"><p>' . sprintf( esc_html__( 'Cache cleared. %d entries removed.', 'wpkj-patterns-library' ), $removed ) . '</p></div>';
+        }
         echo '<form method="post" action="' . esc_url( admin_url( 'options.php' ) ) . '">';
         settings_fields( 'wpkj_pl_settings' );
         do_settings_sections( 'wpkj-patterns-library' );
         submit_button();
         echo '</form>';
         echo '<hr />';
-        echo '<p><a class="button button-primary" href="' . esc_url( admin_url( 'admin-post.php?action=wpkj_pl_sync_now' ) ) . '">' . esc_html__( 'Sync Now', 'wpkj-patterns-library' ) . '</a></p>';
+        $clear_url = wp_nonce_url( admin_url( 'admin-post.php?action=wpkj_pl_clear_cache' ), 'wpkj_pl_clear_cache' );
+        echo '<p>';
+        echo '<a class="button button-primary" href="' . esc_url( admin_url( 'admin-post.php?action=wpkj_pl_sync_now' ) ) . '">' . esc_html__( 'Sync Now', 'wpkj-patterns-library' ) . '</a> ';
+        echo '<a class="button" href="' . esc_url( $clear_url ) . '">' . esc_html__( 'Clear Cache', 'wpkj-patterns-library' ) . '</a>';
+        echo '</p>';
         echo '</div>';
     }
 }

@@ -6,9 +6,13 @@
   height: 90vh;
   max-height: 1600px;
 }
+.wpkj-pl-modal .components-modal__header {
+  padding: 15px 25px;
+  height: auto;
+  border-bottom: 1px solid #ddd;
+}
 .wpkj-pl-modal .components-modal__content {
-  display: flex;
-  flex-direction: column;
+  padding: 0 25px 25px;
 }
 .wpkj-pl-topbar { display: flex; justify-content: flex-start; padding: 8px 0; }
 .wpkj-pl-tabs { display: flex; gap: 8px; }
@@ -22,7 +26,7 @@
   flex-wrap: wrap;
   margin-top: 8px;
 }
-.wpkj-pl-filter-group { min-width: 220px; }
+.wpkj-pl-filter-group { min-width: 220px; margin: 15px 0;}
 .wpkj-pl-filter-title { font-weight: 600; margin-bottom: 6px; }
 .wpkj-pl-filter-actions { display: flex; gap: 6px; margin: 6px 0; }
 .wpkj-pl-content { margin-top: 12px; }
@@ -75,6 +79,28 @@
   margin-top: 16px;
   display: flex;
   justify-content: center;
+}
+
+/* Search/Import history UI */
+.wpkj-pl-search-history,
+.wpkj-pl-import-history {
+  margin-top: 12px;
+}
+.wpkj-pl-search-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.wpkj-pl-import-list {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+.wpkj-pl-import-item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Ensure toolbar button aligns visually (optional enhancement) */

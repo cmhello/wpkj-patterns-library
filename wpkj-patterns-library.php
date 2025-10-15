@@ -116,5 +116,17 @@ add_action( 'admin_post_wpkj_pl_sync_now', function() {
     exit;
 } );
 
+// Admin: clear plugin cache (transients with prefix)
+add_action( 'admin_post_wpkj_pl_clear_cache', function() {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_die( __( 'Insufficient permissions.', 'wpkj-patterns-library' ) );
+    }
+    check_admin_referer( 'wpkj_pl_clear_cache' );
+    $cache = new \WPKJ\PatternsLibrary\Includes\Cache();
+    $removed = $cache->clear_all();
+    wp_safe_redirect( admin_url( 'options-general.php?page=wpkj-patterns-library&cache_cleared=1&removed=' . intval( $removed ) ) );
+    exit;
+} );
+
 // Enqueue editor assets: toolbar button + modal UI
 // Editor assets are enqueued via Includes\Assets class

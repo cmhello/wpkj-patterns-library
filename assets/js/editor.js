@@ -12,9 +12,11 @@
         return;
     }
 
-    const cfg = window.WPKJPatternsConfig || { apiBase: '', jwt: '', restNonce: '' };
+    const cfg = window.WPKJPatternsConfig || { apiBase: '', jwt: '', restNonce: '', activeSlugs: [], canInstallPlugins: false, adminUrlPluginInstall: '', adminUrlPlugins: '' };
     const PER_PAGE = 20;
     const FAV_KEY = 'wpkj_pl_favorites_ids';
+    const IMPORT_HISTORY_KEY = 'wpkj_pl_import_history';
+    const SEARCH_HISTORY_KEY = 'wpkj_pl_search_history';
 
     const fetchJSON = async ( path, params = {}, opts = {} ) => {
         const url = new URL( (cfg.apiBase || '') + path, window.location.origin );
@@ -94,6 +96,27 @@
         try { window.localStorage.setItem( FAV_KEY, JSON.stringify( ids ) ); } catch (e) {}
     };
 
+    const readImportHistory = () => {
+        try {
+            const raw = window.localStorage.getItem( IMPORT_HISTORY_KEY );
+            const arr = raw ? JSON.parse( raw ) : [];
+            return Array.isArray( arr ) ? arr : [];
+        } catch (e) { return []; }
+    };
+    const writeImportHistory = ( list ) => {
+        try { window.localStorage.setItem( IMPORT_HISTORY_KEY, JSON.stringify( list ) ); } catch (e) {}
+    };
+    const readSearchHistory = () => {
+        try {
+            const raw = window.localStorage.getItem( SEARCH_HISTORY_KEY );
+            const arr = raw ? JSON.parse( raw ) : [];
+            return Array.isArray( arr ) ? arr : [];
+        } catch (e) { return []; }
+    };
+    const writeSearchHistory = ( list ) => {
+        try { window.localStorage.setItem( SEARCH_HISTORY_KEY, JSON.stringify( list ) ); } catch (e) {}
+    };
+
     const mergeUniqueById = ( prev, next ) => {
         const seen = new Set( prev.map( x => x.id ) );
         let added = 0;
@@ -124,7 +147,6 @@
         const [ types, setTypes ] = useState( [] );
         const [ selectedCategories, setSelectedCategories ] = useState( [] );
         const [ selectedTypes, setSelectedTypes ] = useState( [] );
-        const [ typeQuick, setTypeQuick ] = useState( '' ); // '', 'free', 'vip'
         const [ orderBy, setOrderBy ] = useState( 'date' );
         const [ orderDir, setOrderDir ] = useState( 'DESC' );
         const [ activeTab, setActiveTab ] = useState( 'patterns' );
@@ -132,8 +154,11 @@
         const [ onlyFavorites, setOnlyFavorites ] = useState( false );
         const [ hasMore, setHasMore ] = useState( true );
         const [ skeletonCount, setSkeletonCount ] = useState( 0 );
-        const [ typesExpanded, setTypesExpanded ] = useState( true );
-        const [ categoriesExpanded, setCategoriesExpanded ] = useState( true );
+        const [ importHistory, setImportHistory ] = useState( readImportHistory() );
+        const [ searchHistory, setSearchHistory ] = useState( readSearchHistory() );
+        const [ deps, setDeps ] = useState( [] );
+        const [ depsLoading, setDepsLoading ] = useState( false );
+        
         // Preview is handled via external link, no in-modal preview state
 
         // Simple debounce for search and filters
@@ -155,18 +180,21 @@
                 const params = { per_page: PER_PAGE, page: requestPage, orderby: orderBy, order: orderDir };
                 if ( isSearch ) params['q'] = trimmed;
                 if ( selectedCategories && selectedCategories.length ) params['category'] = selectedCategories;
-                let useTypes = selectedTypes;
-                if ( typeQuick === 'free' || typeQuick === 'vip' ) {
-                    // Map quick slugs to term ids if available
-                    const lookup = new Map( (types || []).map( t => [ t.slug, t.id ] ) );
-                    const quickId = lookup.get( typeQuick );
-                    if ( quickId ) {
-                        useTypes = Array.from( new Set( [ ...(useTypes||[]), quickId ] ) );
-                    }
-                }
-                if ( useTypes && useTypes.length ) params['type'] = useTypes;
+                if ( selectedTypes && selectedTypes.length ) params['type'] = selectedTypes;
                 setSkeletonCount( reset ? PER_PAGE : Math.min( 8, PER_PAGE ) );
                 const data = await fetchJSON( isSearch ? '/search' : '/patterns', params );
+                // Record search history only for first page of a new search
+                if ( isSearch && requestPage === 1 ) {
+                    setSearchHistory( prev => {
+                        const exists = new Set( prev.map( x => (x||'') ) );
+                        if ( ! exists.has( trimmed ) ) {
+                            const next = [ trimmed, ...prev ].slice( 0, 10 );
+                            writeSearchHistory( next );
+                            return next;
+                        }
+                        return prev;
+                    } );
+                }
                 const prev = reset ? [] : items;
                 const { merged, added } = mergeUniqueById( prev, Array.isArray( data ) ? data : [] );
                 setItems( merged );
@@ -193,9 +221,29 @@
             }
         };
 
+        const loadDependencies = async () => {
+            setDepsLoading( true );
+            try {
+                const list = await fetchPL( '/dependencies', {}, { silent: true } );
+                const normalized = Array.isArray( list ) ? list.map( (d) => {
+                    if ( typeof d === 'string' ) return { slug: d, name: d };
+                    const slug = d && d.info && d.info.slug ? d.info.slug : ( d && d.slug ? d.slug : '' );
+                    const name = d && d.name ? d.name : ( slug || '' );
+                    const required = !!( d && d.info && d.info.required );
+                    return { slug, name, required };
+                } ) : [];
+                setDeps( normalized.filter( x => x.slug ) );
+            } catch(e) {
+                setDeps( [] );
+            } finally {
+                setDepsLoading( false );
+            }
+        };
+
         useEffect( () => {
             if ( isOpen ) {
                 loadTaxonomies();
+                loadDependencies();
                 // Merge server favorites into local on open
                 ( async () => {
                     try {
@@ -230,7 +278,7 @@
             }, 300 );
             debounced();
             // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [ query, selectedCategories.join(','), selectedTypes.join(','), orderBy, orderDir, typeQuick ] );
+        }, [ query, selectedCategories.join(','), selectedTypes.join(','), orderBy, orderDir ] );
 
         return el( Fragment, null,
             isOpen && el( Modal, {
@@ -252,6 +300,13 @@
                             onChange: (v) => setQuery( v ),
                             onKeyDown: (e) => { if ( e.key === 'Enter' ) { setHasMore( true ); setItems( [] ); setPage( 1 ); pageRef.current = 1; load( true ); } },
                         } ),
+                        ( searchHistory && searchHistory.length ) ? el( 'div', { className: 'wpkj-pl-search-history' },
+                            el( 'div', { className: 'wpkj-pl-filter-title' }, __( 'Recent searches', 'wpkj-patterns-library' ) ),
+                            el( 'div', { className: 'wpkj-pl-search-chips' },
+                                searchHistory.slice( 0, 6 ).map( (qv, idx) => el( Button, { key: 'q-'+idx, isSecondary: true, onClick: () => { setQuery( qv ); setHasMore( true ); setItems( [] ); setPage( 1 ); pageRef.current = 1; load( true ); } }, qv ) )
+                            ),
+                            el( Button, { isTertiary: true, onClick: () => { setSearchHistory( [] ); writeSearchHistory( [] ); } }, __( 'Clear', 'wpkj-patterns-library' ) )
+                        ) : null,
                         el( 'div', { className: 'wpkj-pl-quick' },
                             el( SelectControl, {
                                 label: __( 'Order by', 'wpkj-patterns-library' ),
@@ -271,26 +326,12 @@
                                     { label: 'ASC', value: 'ASC' },
                                 ],
                                 onChange: (val) => setOrderDir( val )
-                            } ),
-                            el( SelectControl, {
-                                label: __( 'Type', 'wpkj-patterns-library' ),
-                                value: typeQuick,
-                                options: [
-                                    { label: __( 'All', 'wpkj-patterns-library' ), value: '' },
-                                    { label: __( 'Free', 'wpkj-patterns-library' ), value: 'free' },
-                                    { label: __( 'VIP', 'wpkj-patterns-library' ), value: 'vip' },
-                                ],
-                                onChange: (val) => setTypeQuick( val )
                             } )
                         ),
                         el( Button, { className: 'wpkj-pl-fav' , isSecondary: !onlyFavorites, isPrimary: onlyFavorites, onClick: () => setOnlyFavorites( !onlyFavorites ) }, __( 'Favorites', 'wpkj-patterns-library' ) ),
                         el( 'div', { className: 'wpkj-pl-filter-group' },
                             el( 'div', { className: 'wpkj-pl-filter-title' }, __( 'Types', 'wpkj-patterns-library' ) ),
-                            el( 'div', { className: 'wpkj-pl-filter-actions' },
-                                el( Button, { isSecondary: true, onClick: () => setTypesExpanded( !typesExpanded ) }, typesExpanded ? '▾' : '▸' ),
-                                el( Button, { isTertiary: true, onClick: () => { setSelectedTypes([]); setHasMore(true); setItems([]); setPage(1); pageRef.current=1; load(true); } }, __( 'Clear', 'wpkj-patterns-library' ) )
-                            ),
-                            types && types.length && typesExpanded ? types.map( (t) => el( CheckboxControl, {
+                            types && types.length ? types.map( (t) => el( CheckboxControl, {
                                 key: t.id,
                                 label: (t.name || '') + ' (' + (t.count || 0) + ')',
                                 checked: selectedTypes.includes( t.id ),
@@ -302,11 +343,7 @@
                         ),
                         el( 'div', { className: 'wpkj-pl-filter-group' },
                             el( 'div', { className: 'wpkj-pl-filter-title' }, __( 'Categories', 'wpkj-patterns-library' ) ),
-                            el( 'div', { className: 'wpkj-pl-filter-actions' },
-                                el( Button, { isSecondary: true, onClick: () => setCategoriesExpanded( !categoriesExpanded ) }, categoriesExpanded ? '▾' : '▸' ),
-                                el( Button, { isTertiary: true, onClick: () => { setSelectedCategories([]); setHasMore(true); setItems([]); setPage(1); pageRef.current=1; load(true); } }, __( 'Clear', 'wpkj-patterns-library' ) )
-                            ),
-                            categories && categories.length && categoriesExpanded ? categories.map( (c) => el( CheckboxControl, {
+                            categories && categories.length ? categories.map( (c) => el( CheckboxControl, {
                                 key: c.id,
                                 label: (c.name || '') + ' (' + (c.count || 0) + ')',
                                 checked: selectedCategories.includes( c.id ),
@@ -315,7 +352,38 @@
                                     setSelectedCategories( checked ? [ ...selectedCategories, val ] : selectedCategories.filter( x => x !== val ) );
                                 }
                             } ) ) : null
-                        )
+                        ),
+                        el( 'div', { className: 'wpkj-pl-filter-group' },
+                            el( 'div', { className: 'wpkj-pl-filter-title' }, __( 'Dependencies', 'wpkj-patterns-library' ) ),
+                            depsLoading ? el( Spinner, null ) : ( deps && deps.length ? deps.map( (dep) => {
+                                const isInstalled = Array.isArray( cfg.activeSlugs ) && cfg.activeSlugs.includes( dep.slug );
+                                const installUrl = ( cfg.adminUrlPluginInstall || '/wp-admin/plugin-install.php?tab=search&s=' ) + encodeURIComponent( dep.slug );
+                                const manageUrl = cfg.adminUrlPlugins || '/wp-admin/plugins.php';
+                                const tryInstall = async () => {
+                                    if ( window.wp && window.wp.updates && typeof window.wp.updates.installPlugin === 'function' && cfg.canInstallPlugins ) {
+                                        try { await window.wp.updates.installPlugin( { slug: dep.slug } ); } catch(e) {}
+                                    } else {
+                                        window.open( installUrl, '_blank' );
+                                    }
+                                };
+                                return el( 'div', { key: dep.slug, className: 'wpkj-pl-dep-row' },
+                                    el( 'span', null, dep.name || dep.slug ),
+                                    dep.required ? el( 'span', { style: { marginLeft: 8, color: '#a50' } }, __( 'Required', 'wpkj-patterns-library' ) ) : null,
+                                    isInstalled ? el( 'span', { style: { marginLeft: 8, color: '#0a0' } }, __( 'Installed', 'wpkj-patterns-library' ) ) : el( Button, { isSecondary: true, onClick: tryInstall, style: { marginLeft: 8 } }, __( 'Install', 'wpkj-patterns-library' ) ),
+                                    el( 'a', { href: manageUrl, target: '_blank', rel: 'noopener', style: { marginLeft: 8 } }, __( 'Manage', 'wpkj-patterns-library' ) )
+                                );
+                            } ) : el( 'div', { style: { color: '#666' } }, __( 'No dependencies', 'wpkj-patterns-library' ) ) )
+                        ),
+                        ( importHistory && importHistory.length ) ? el( 'div', { className: 'wpkj-pl-import-history' },
+                            el( 'div', { className: 'wpkj-pl-filter-title' }, __( 'Recent imports', 'wpkj-patterns-library' ) ),
+                            el( 'div', { className: 'wpkj-pl-import-list' },
+                                importHistory.slice(0,6).map( (it, idx) => el( Fragment, { key: it.id || ('imp-'+idx) },
+                                    el( 'div', { className: 'wpkj-pl-import-item-title' }, it.title || ('#' + it.id) ),
+                                    el( Button, { isSecondary: true, onClick: async () => { if ( it.content ) { insertContent( it.content ); } else { try { const det = await fetchJSON( `/patterns/${it.id}`, {}, { silent: true } ); if ( det && det.content ) insertContent( det.content ); } catch(e) {} } } }, __( 'Insert', 'wpkj-patterns-library' ) )
+                                ) )
+                            ),
+                            el( Button, { isTertiary: true, onClick: () => { setImportHistory( [] ); writeImportHistory( [] ); } }, __( 'Clear', 'wpkj-patterns-library' ) )
+                        ) : null
                     ),
                     el( 'div', { className: 'wpkj-pl-main' },
                         el( 'div', { className: 'wpkj-pl-heading' }, __( 'All Templates', 'wpkj-patterns-library' ) ),
@@ -348,9 +416,7 @@
                                             try {
                                                 const action = isFav ? 'remove' : 'add';
                                                 await fetchPL( '/favorites', { id: it.id, action }, { method: 'POST', silent: true } );
-                                                if ( action === 'add' ) {
-                                                    await fetchJSON( `/patterns/${it.id}/favorite`, { action }, { method: 'POST', silent: true } );
-                                                }
+                                                // Skip remote favorite call to avoid 400 errors
                                             } catch(e) {}
                                         };
                                         return el( 'div', { key: it.id, className: 'wpkj-pl-card' },
@@ -358,7 +424,7 @@
                                                 thumb ? el( 'img', { src: thumb, alt: it.title || ('#' + it.id), className: 'wpkj-pl-thumb', loading: 'lazy', onError: (e) => { e.currentTarget.style.visibility = 'hidden'; } } ) : el( 'div', { className: 'wpkj-pl-thumb' }, '' ),
                                                 el( 'div', { className: 'wpkj-pl-card-overlay' },
                                                     el( 'a', { href: link, target: '_blank', rel: 'noopener', className: 'components-button is-secondary' }, __( 'Preview', 'wpkj-patterns-library' ) ),
-                                                    el( Button, { isPrimary: true, onClick: async () => { insertContent( it.content || '' ); try { await fetchJSON( `/patterns/${it.id}/import`, {}, { method: 'POST', silent: true } ); } catch(e) {} } }, __( 'Import', 'wpkj-patterns-library' ) ),
+                                                    el( Button, { isPrimary: true, onClick: async () => { insertContent( it.content || '' ); try { await fetchJSON( `/patterns/${it.id}/import`, {}, { method: 'POST', silent: true } ); } catch(e) {} setImportHistory( prev => { const entry = { id: it.id, title: it.title || ('#' + it.id), link: it.link || '#', content: it.content || '', ts: Date.now() }; const dedup = prev.filter( x => x.id !== entry.id ); const next = [ entry, ...dedup ].slice(0,10); writeImportHistory( next ); return next; } ); } }, __( 'Import', 'wpkj-patterns-library' ) ),
                                                     el( Button, { className: 'wpkj-pl-fav-toggle' + ( isFav ? ' is-active' : '' ), isSecondary: true, onClick: toggleFav, 'aria-label': __( 'Favorite', 'wpkj-patterns-library' ), title: __( 'Favorite', 'wpkj-patterns-library' ) }, isFav ? '★' : '☆' )
                                                 )
                                             ),
