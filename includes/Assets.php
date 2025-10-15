@@ -28,6 +28,11 @@ class Assets {
             true
         );
 
+        // Bind script translations for the editor UI
+        if ( function_exists( 'wp_set_script_translations' ) ) {
+            wp_set_script_translations( 'wpkj-pl-editor', 'wpkj-patterns-library', WPKJ_PL_DIR . 'languages' );
+        }
+
         // Prepare active plugin slugs and capability
         if ( ! function_exists( 'get_plugins' ) ) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';

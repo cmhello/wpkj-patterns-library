@@ -1,0 +1,37 @@
+{
+  "translation-revision-date": "2025-10-15 00:00+0000",
+  "generator": "Trae AI",
+  "domain": "wpkj-patterns-library",
+  "locale_data": {
+    "messages": {
+      "": { "domain": "wpkj-patterns-library", "lang": "zh_CN" },
+      "Patterns": ["模式"],
+      "Pages": ["页面"],
+      "Search": ["搜索"],
+      "Recent searches": ["最近搜索"],
+      "Clear": ["清除"],
+      "Order by": ["排序字段"],
+      "Date": ["日期"],
+      "Title": ["标题"],
+      "Popular": ["热门"],
+      "Order": ["排序"],
+      "Favorites": ["收藏"],
+      "Types": ["类型"],
+      "Categories": ["分类"],
+      "Dependencies": ["依赖"],
+      "Required": ["必需"],
+      "Installed": ["已安装"],
+      "Install": ["安装"],
+      "Manage": ["管理"],
+      "No dependencies": ["无依赖"],
+      "Recent imports": ["最近导入"],
+      "All Templates": ["全部模板"],
+      "No results found.": ["未找到结果。"],
+      "Preview": ["预览"],
+      "Favorite": ["收藏"],
+      "Load more": ["加载更多"],
+      "No more": ["没有更多"],
+      "Patterns Library": ["模式库"]
+    }
+  }
+}

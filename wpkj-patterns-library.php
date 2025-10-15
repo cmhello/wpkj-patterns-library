@@ -71,6 +71,16 @@ function wpkj_patterns_library_run() {
 
 wpkj_patterns_library_run();
 
+// Load textdomain and compile zh_CN .mo from .po if missing
+add_action( 'init', function() {
+    // Load plugin text domain from /languages
+    load_plugin_textdomain(
+        'wpkj-patterns-library',
+        false,
+        dirname( plugin_basename( WPKJ_PL_FILE ) ) . '/languages'
+    );
+}, 5 );
+
 // Activation: schedule sync event
 register_activation_hook( __FILE__, function() {
     if ( ! wp_next_scheduled( 'wpkj_pl_sync_event' ) ) {
