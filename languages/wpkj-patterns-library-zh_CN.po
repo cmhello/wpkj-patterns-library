@@ -14,16 +14,16 @@ msgstr ""
 
 # PHP strings
 msgid "WPKJ Patterns Library"
-msgstr "WPKJ 模式库"
+msgstr "WPKJ 样板库"
 
 msgid "Insufficient permissions."
 msgstr "权限不足。"
 
 msgid "Patterns Library Settings"
-msgstr "模式库设置"
+msgstr "样板库设置"
 
 msgid "Configure API and caching for the Patterns Library."
-msgstr "配置模式库的 API 和缓存。"
+msgstr "配置样板库的 API 和缓存。"
 
 msgid "API Base URL"
 msgstr "API 基础地址"
@@ -32,7 +32,7 @@ msgid "Cache TTL (seconds)"
 msgstr "缓存有效期（秒）"
 
 msgid "Max Patterns Registered"
-msgstr "最大注册模式数量"
+msgstr "最大注册样板数量"
 
 msgid "JWT Token (optional)"
 msgstr "JWT 令牌（可选）"
@@ -51,7 +51,7 @@ msgstr "清理缓存"
 
 # JS strings (editor.js)
 msgid "Patterns"
-msgstr "模式"
+msgstr "样板"
 
 msgid "Pages"
 msgstr "页面"
@@ -129,4 +129,4 @@ msgid "No more"
 msgstr "没有更多"
 
 msgid "Patterns Library"
-msgstr "模式库"
+msgstr "样板库"

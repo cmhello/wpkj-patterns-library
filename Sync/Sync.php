@@ -13,7 +13,8 @@ class Sync {
 
         // Warm up caches for categories and patterns (first page only)
         $cats = $api->get_categories();
-        $first = $api->get_patterns( [ 'per_page' => 50, 'page' => 1 ] );
+        // Use minimal fields for first-page warmup to reduce cache size
+        $first = $api->get_patterns_min( [ 'per_page' => 50, 'page' => 1 ] );
 
         // Optional: prefetch additional pages, but guard by option to avoid overload
         $prefetch = (int) get_option( 'wpkj_patterns_library_max_register', 200 );
@@ -21,7 +22,8 @@ class Sync {
         $page     = 2;
         $fetched  = is_array( $first ) ? count( $first ) : 0;
         while ( $fetched < $prefetch ) {
-            $batch = $api->get_patterns( [ 'per_page' => $per_page, 'page' => $page ] );
+            // Prefetch using minimal list to keep cache light
+            $batch = $api->get_patterns_min( [ 'per_page' => $per_page, 'page' => $page ] );
             if ( empty( $batch ) ) {
                 break;
             }

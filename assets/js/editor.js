@@ -13,7 +13,7 @@
     }
 
     const cfg = window.WPKJPatternsConfig || { apiBase: '', jwt: '', restNonce: '', activeSlugs: [], canInstallPlugins: false, adminUrlPluginInstall: '', adminUrlPlugins: '' };
-    const PER_PAGE = 20;
+    const PER_PAGE = 18;
     const FAV_KEY = 'wpkj_pl_favorites_ids';
     const IMPORT_HISTORY_KEY = 'wpkj_pl_import_history';
     const SEARCH_HISTORY_KEY = 'wpkj_pl_search_history';
@@ -120,9 +120,17 @@
     const mergeUniqueById = ( prev, next ) => {
         const seen = new Set( prev.map( x => x.id ) );
         let added = 0;
+        let firstNewId;
         const merged = [ ...prev ];
-        next.forEach( x => { if ( ! seen.has( x.id ) ) { seen.add( x.id ); merged.push( x ); added++; } } );
-        return { merged, added };
+        next.forEach( x => {
+            if ( ! seen.has( x.id ) ) {
+                seen.add( x.id );
+                merged.push( x );
+                added++;
+                if ( firstNewId === undefined ) firstNewId = x.id;
+            }
+        } );
+        return { merged, added, firstNewId };
     };
 
     const insertContent = ( html ) => {
@@ -154,6 +162,8 @@
         const [ onlyFavorites, setOnlyFavorites ] = useState( false );
         const [ hasMore, setHasMore ] = useState( true );
         const [ skeletonCount, setSkeletonCount ] = useState( 0 );
+        const [ isAppending, setIsAppending ] = useState( false );
+        const gridRef = useRef( null );
         const [ importHistory, setImportHistory ] = useState( readImportHistory() );
         const [ searchHistory, setSearchHistory ] = useState( readSearchHistory() );
         const [ deps, setDeps ] = useState( [] );
@@ -173,6 +183,7 @@
         const load = async ( reset = false ) => {
             setLoading( true );
             setError( '' );
+            setIsAppending( ! reset );
             try {
                 const requestPage = reset ? 1 : ( pageRef.current + 1 );
                 const trimmed = (query || '').trim();
@@ -196,15 +207,25 @@
                     } );
                 }
                 const prev = reset ? [] : items;
-                const { merged, added } = mergeUniqueById( prev, Array.isArray( data ) ? data : [] );
+                const { merged, added, firstNewId } = mergeUniqueById( prev, Array.isArray( data ) ? data : [] );
                 setItems( merged );
                 setPage( requestPage );
                 pageRef.current = requestPage;
                 setHasMore( added > 0 && ( Array.isArray( data ) ? data.length >= PER_PAGE : false ) );
+                // Smoothly bring the first newly added card into view on append
+                if ( ! reset && added > 0 && firstNewId !== undefined ) {
+                    setTimeout( () => {
+                        const sel = document.querySelector( '.wpkj-pl-grid .wpkj-pl-card[data-id="' + String( firstNewId ) + '"]' );
+                        if ( sel && typeof sel.scrollIntoView === 'function' ) {
+                            sel.scrollIntoView( { block: 'nearest', inline: 'nearest', behavior: 'smooth' } );
+                        }
+                    }, 0 );
+                }
             } catch ( e ) {
                 setError( e.message || 'Network error' );
             } finally {
                 setLoading( false );
+                setIsAppending( false );
             }
         };
 
@@ -378,7 +399,26 @@
                             el( 'div', { className: 'wpkj-pl-filter-title' }, __( 'Recent imports', 'wpkj-patterns-library' ) ),
                             el( 'div', { className: 'wpkj-pl-import-list' },
                                 importHistory.slice(0,6).map( (it, idx) => el( Fragment, { key: it.id || ('imp-'+idx) },
-                                    el( 'div', { className: 'wpkj-pl-import-item-title' }, it.title || ('#' + it.id) ),
+                                    el( 'div', { className: 'wpkj-pl-import-item-title', onMouseEnter: async () => {
+                                        try {
+                                            if ( it && it.id && ! it.featured_image ) {
+                                                const det = await fetchJSON( `/patterns/${it.id}`, {}, { silent: true } );
+                                                const thumb = det ? getThumbFromItem( det ) : '';
+                                                if ( thumb ) {
+                                                    setImportHistory( prev => {
+                                                        const next = prev.map( x => x.id === it.id ? { ...x, featured_image: thumb } : x );
+                                                        writeImportHistory( next );
+                                                        return next;
+                                                    } );
+                                                }
+                                            }
+                                        } catch(e) {}
+                                    } },
+                                        el( 'span', null, it.title || ('#' + it.id) ),
+                                        ( it && it.featured_image ? el( 'div', { className: 'wpkj-pl-import-preview' },
+                                            el( 'img', { src: it.featured_image, alt: it.title || ('#' + it.id) } )
+                                        ) : null )
+                                    ),
                                     el( Button, { isSecondary: true, onClick: async () => { if ( it.content ) { insertContent( it.content ); } else { try { const det = await fetchJSON( `/patterns/${it.id}`, {}, { silent: true } ); if ( det && det.content ) insertContent( det.content ); } catch(e) {} } } }, __( 'Insert', 'wpkj-patterns-library' ) )
                                 ) )
                             ),
@@ -389,56 +429,81 @@
                         el( 'div', { className: 'wpkj-pl-heading' }, __( 'All Templates', 'wpkj-patterns-library' ) ),
                         error && el( 'div', { className: 'notice notice-error' }, error ),
                         el( 'div', { className: 'wpkj-pl-content' },
-                            el( 'div', { className: 'wpkj-pl-grid' },
+                            el( 'div', { className: 'wpkj-pl-grid', ref: gridRef },
                                 ( () => {
                                     const displayItems = onlyFavorites ? items.filter( x => favorites.includes( x.id ) ) : items;
-                                    if ( loading ) {
+                                    const cardEls = [];
+                                    // Render existing items first
+                                    if ( displayItems && displayItems.length ) {
+                                        displayItems.forEach( ( it ) => {
+                                            const thumb = getThumbFromItem( it );
+                                            const link = it.link || '#';
+                                            const isFav = favorites.includes( it.id );
+                                            const toggleFav = async () => {
+                                                const next = isFav ? favorites.filter( id => id !== it.id ) : [ ...favorites, it.id ];
+                                                setFavorites( next );
+                                                writeFavorites( next );
+                                                try {
+                                                    const action = isFav ? 'remove' : 'add';
+                                                    await fetchPL( '/favorites', { id: it.id, action }, { method: 'POST', silent: true } );
+                                                } catch(e) {}
+                                            };
+                                            cardEls.push(
+                                                el( 'div', { key: it.id, className: 'wpkj-pl-card', 'data-id': it.id },
+                                                    el( 'div', { className: 'wpkj-pl-card-media' },
+                                                        thumb ? el( 'img', { src: thumb, alt: it.title || ('#' + it.id), className: 'wpkj-pl-thumb', loading: 'lazy', onError: (e) => { e.currentTarget.style.visibility = 'hidden'; } } ) : el( 'div', { className: 'wpkj-pl-thumb' }, '' ),
+                                                        el( 'div', { className: 'wpkj-pl-card-overlay' },
+                                                            el( 'a', { href: link, target: '_blank', rel: 'noopener', className: 'components-button is-secondary' }, __( 'Preview', 'wpkj-patterns-library' ) ),
+                                                            el( Button, { isPrimary: true, onClick: async () => { insertContent( it.content || '' ); try { await fetchJSON( `/patterns/${it.id}/import`, {}, { method: 'POST', silent: true } ); } catch(e) {} setImportHistory( prev => { const entry = { id: it.id, title: it.title || ('#' + it.id), link: it.link || '#', content: it.content || '', featured_image: getThumbFromItem( it ), ts: Date.now() }; const dedup = prev.filter( x => x.id !== entry.id ); const next = [ entry, ...dedup ].slice(0,10); writeImportHistory( next ); return next; } ); } }, __( 'Import', 'wpkj-patterns-library' ) ),
+                                                            el( Button, { className: 'wpkj-pl-fav-toggle' + ( isFav ? ' is-active' : '' ), isSecondary: true, onClick: toggleFav, 'aria-label': __( 'Favorite', 'wpkj-patterns-library' ), title: __( 'Favorite', 'wpkj-patterns-library' ) }, isFav ? '★' : '☆' )
+                                                        )
+                                                    ),
+                                                    el( 'div', { className: 'wpkj-pl-card-title' }, it.title || ('#' + it.id) )
+                                                )
+                                            );
+                                        } );
+                                    }
+
+                                    // If loading and appending, show skeletons after existing items
+                                    if ( loading && ( isAppending && ( displayItems && displayItems.length ) ) ) {
+                                        const skelCount = skeletonCount || Math.min( PER_PAGE, 12 );
+                                        for ( let i = 0; i < skelCount; i++ ) {
+                                            cardEls.push(
+                                                el( 'div', { key: 'skel-' + i + '-' + pageRef.current, className: 'wpkj-pl-card skeleton' },
+                                                    el( 'div', { className: 'wpkj-pl-card-media' },
+                                                        el( 'div', { className: 'wpkj-pl-thumb skel' } )
+                                                    ),
+                                                    el( 'div', { className: 'wpkj-pl-card-title skel' }, ' ' )
+                                                )
+                                            );
+                                        }
+                                    }
+
+                                    // If not appending and still loading with empty list (initial/search reset), show skeleton only
+                                    if ( loading && ( ! isAppending ) && ( ! (displayItems && displayItems.length) ) ) {
                                         const count = skeletonCount || Math.min( PER_PAGE, 12 );
-                                        return Array.from( { length: count } ).map( ( _, idx ) => el( 'div', { key: 'skel-' + idx, className: 'wpkj-pl-card skeleton' },
+                                        return Array.from( { length: count } ).map( ( _, idx ) => el( 'div', { key: 'skel-init-' + idx, className: 'wpkj-pl-card skeleton' },
                                             el( 'div', { className: 'wpkj-pl-card-media' },
                                                 el( 'div', { className: 'wpkj-pl-thumb skel' } )
                                             ),
                                             el( 'div', { className: 'wpkj-pl-card-title skel' }, ' ' )
                                         ) );
                                     }
-                                    if ( ! displayItems.length ) {
+
+                                    if ( ! cardEls.length ) {
                                         return el( 'div', { className: 'wpkj-pl-empty' }, __( 'No results found.', 'wpkj-patterns-library' ) );
                                     }
-                                    return displayItems.map( ( it ) => {
-                                        const thumb = getThumbFromItem( it );
-                                        const link = it.link || '#';
-                                        const isFav = favorites.includes( it.id );
-                                        const toggleFav = async () => {
-                                            const next = isFav ? favorites.filter( id => id !== it.id ) : [ ...favorites, it.id ];
-                                            setFavorites( next );
-                                            writeFavorites( next );
-                                            // Sync to server if logged in
-                                            try {
-                                                const action = isFav ? 'remove' : 'add';
-                                                await fetchPL( '/favorites', { id: it.id, action }, { method: 'POST', silent: true } );
-                                                // Skip remote favorite call to avoid 400 errors
-                                            } catch(e) {}
-                                        };
-                                        return el( 'div', { key: it.id, className: 'wpkj-pl-card' },
-                                            el( 'div', { className: 'wpkj-pl-card-media' },
-                                                thumb ? el( 'img', { src: thumb, alt: it.title || ('#' + it.id), className: 'wpkj-pl-thumb', loading: 'lazy', onError: (e) => { e.currentTarget.style.visibility = 'hidden'; } } ) : el( 'div', { className: 'wpkj-pl-thumb' }, '' ),
-                                                el( 'div', { className: 'wpkj-pl-card-overlay' },
-                                                    el( 'a', { href: link, target: '_blank', rel: 'noopener', className: 'components-button is-secondary' }, __( 'Preview', 'wpkj-patterns-library' ) ),
-                                                    el( Button, { isPrimary: true, onClick: async () => { insertContent( it.content || '' ); try { await fetchJSON( `/patterns/${it.id}/import`, {}, { method: 'POST', silent: true } ); } catch(e) {} setImportHistory( prev => { const entry = { id: it.id, title: it.title || ('#' + it.id), link: it.link || '#', content: it.content || '', ts: Date.now() }; const dedup = prev.filter( x => x.id !== entry.id ); const next = [ entry, ...dedup ].slice(0,10); writeImportHistory( next ); return next; } ); } }, __( 'Import', 'wpkj-patterns-library' ) ),
-                                                    el( Button, { className: 'wpkj-pl-fav-toggle' + ( isFav ? ' is-active' : '' ), isSecondary: true, onClick: toggleFav, 'aria-label': __( 'Favorite', 'wpkj-patterns-library' ), title: __( 'Favorite', 'wpkj-patterns-library' ) }, isFav ? '★' : '☆' )
-                                                )
-                                            ),
-                                            el( 'div', { className: 'wpkj-pl-card-title' }, it.title || ('#' + it.id) )
-                                        );
-                                    } );
+                                    return cardEls;
                                 } )()
                             )
+                        ),
+                        // Actions inside main: load more
+                        el( 'div', { className: 'wpkj-pl-main-actions' },
+                            el( Button, { isSecondary: true, disabled: loading || ! hasMore, onClick: () => load( false ) }, hasMore ? __( 'Load more', 'wpkj-patterns-library' ) : __( 'No more', 'wpkj-patterns-library' ) )
                         )
                     )
                 ),
-                el( 'div', { className: 'wpkj-pl-footer' },
-                    el( Button, { isSecondary: true, disabled: loading || ! hasMore, onClick: () => load( false ) }, hasMore ? __( 'Load more', 'wpkj-patterns-library' ) : __( 'No more', 'wpkj-patterns-library' ) )
-                )
+                // Removed duplicate outside main actions container
             )
         );
     };

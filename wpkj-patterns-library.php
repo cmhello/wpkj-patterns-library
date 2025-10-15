@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WPKJ Patterns Library
  * Description: Client-side plugin to discover and import block patterns from WPKJ Patterns Manager via REST API.
- * Version: 0.3.0
+ * Version: 0.4.0
  * Author: WPKJ Team
  * Text Domain: wpkj-patterns-library
  * Domain Path: /languages
@@ -14,6 +14,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants for modular development and reliable paths
+if ( ! defined( 'WPKJ_PL_VERSION' ) ) {
+    define( 'WPKJ_PL_VERSION', '0.4.0' );
+}
 if ( ! defined( 'WPKJ_PL_FILE' ) ) {
     define( 'WPKJ_PL_FILE', __FILE__ );
 }
@@ -25,9 +28,6 @@ if ( ! defined( 'WPKJ_PL_URL' ) ) {
 }
 if ( ! defined( 'WPKJ_PL_SLUG' ) ) {
     define( 'WPKJ_PL_SLUG', 'wpkj-patterns-library' );
-}
-if ( ! defined( 'WPKJ_PL_VERSION' ) ) {
-    define( 'WPKJ_PL_VERSION', '0.3.0' );
 }
 
 // PSR-4 like, lightweight autoloader for this plugin namespace
@@ -137,3 +137,13 @@ add_action( 'admin_post_wpkj_pl_clear_cache', function() {
     wp_safe_redirect( admin_url( 'options-general.php?page=wpkj-patterns-library&cache_cleared=1&removed=' . intval( $removed ) ) );
     exit;
 } );
+
+// Auto-clear plugin cache when critical settings change (API base or JWT)
+add_action( 'update_option_wpkj_patterns_library_api_base', function( $old, $new, $option ) {
+    // Clearing by prefix ensures both value and timeout entries are removed
+    ( new \WPKJ\PatternsLibrary\Includes\Cache() )->clear_all();
+}, 10, 3 );
+
+add_action( 'update_option_wpkj_patterns_library_jwt', function( $old, $new, $option ) {
+    ( new \WPKJ\PatternsLibrary\Includes\Cache() )->clear_all();
+}, 10, 3 );

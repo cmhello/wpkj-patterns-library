@@ -98,6 +98,63 @@ class ApiClient {
     }
 
     /**
+     * Perform GET request but cache only minimal fields for list endpoints.
+     * Adds a query marker `fields=min` to avoid conflicting with full-cache keys.
+     */
+    private function request_min( string $path, array $params = [] ) {
+        $params_min = $params;
+        $params_min['fields'] = 'min'; // marker for URL uniqueness
+
+        $url       = $this->build_url( $path, $params_min );
+        $cache_key = 'wpkj_pl_' . md5( $url );
+
+        $bypass = (bool) apply_filters( 'wpkj_patterns_library_bypass_cache', false, $path, $params_min );
+        if ( ! $bypass ) {
+            $cached = get_transient( $cache_key );
+            if ( false !== $cached ) {
+                return $cached;
+            }
+        }
+
+        // Inject JWT from option (if present)
+        $headers = $this->get_headers();
+        $jwt     = get_option( 'wpkj_patterns_library_jwt', '' );
+        if ( ! empty( $jwt ) ) {
+            $headers['Authorization'] = 'Bearer ' . $jwt;
+        }
+
+        $response = wp_remote_get( $this->build_url( $path, $params ), [ 'headers' => $headers, 'timeout' => 15 ] );
+        if ( is_wp_error( $response ) ) {
+            return [];
+        }
+
+        $body = wp_remote_retrieve_body( $response );
+        $data = json_decode( $body, true );
+        if ( null === $data ) {
+            return [];
+        }
+
+        // Keep only minimal fields to reduce storage: id, title, link, featured_image
+        if ( is_array( $data ) ) {
+            $min = [];
+            foreach ( $data as $row ) {
+                if ( is_array( $row ) ) {
+                    $min[] = [
+                        'id' => $row['id'] ?? null,
+                        'title' => $row['title'] ?? '',
+                        'link' => $row['link'] ?? '',
+                        'featured_image' => $row['featured_image'] ?? '',
+                    ];
+                }
+            }
+            $data = $min;
+        }
+
+        set_transient( $cache_key, $data, $this->get_cache_ttl( $path, $params_min ) );
+        return $data;
+    }
+
+    /**
      * Fetch patterns list (paginated).
      *
      * @param array $args Query args: per_page, page, orderby, order.
@@ -111,6 +168,18 @@ class ApiClient {
             'order'    => 'DESC',
         ] );
         $data = $this->request( 'patterns', $args );
+        return is_array( $data ) ? $data : [];
+    }
+
+    /** Fetch patterns list (minimal fields, for caching/prewarm only). */
+    public function get_patterns_min( array $args = [] ) : array {
+        $args = wp_parse_args( $args, [
+            'per_page' => 10,
+            'page'     => 1,
+            'orderby'  => 'date',
+            'order'    => 'DESC',
+        ] );
+        $data = $this->request_min( 'patterns', $args );
         return is_array( $data ) ? $data : [];
     }
 
