@@ -6,6 +6,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class Settings {
+    public function hooks() {
+        add_action( 'admin_menu', function() {
+            add_options_page(
+                __( 'WPKJ Patterns Library', 'wpkj-patterns-library' ),
+                __( 'WPKJ Patterns Library', 'wpkj-patterns-library' ),
+                'manage_options',
+                'wpkj-patterns-library',
+                function() {
+                    ( new \WPKJ\PatternsLibrary\Admin\Settings() )->render();
+                }
+            );
+        } );
+
+        add_action( 'admin_init', function() {
+            ( new \WPKJ\PatternsLibrary\Admin\Settings() )->register_settings();
+        } );
+    }
+
     public function register_settings() {
         register_setting( 'wpkj_pl_settings', 'wpkj_patterns_library_api_base', [ 'type' => 'string', 'sanitize_callback' => 'esc_url_raw' ] );
         register_setting( 'wpkj_pl_settings', 'wpkj_patterns_library_cache_ttl', [ 'type' => 'integer', 'sanitize_callback' => 'absint', 'default' => 900 ] );

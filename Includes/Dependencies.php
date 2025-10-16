@@ -198,4 +198,15 @@ class Dependencies {
         $status = $this->refresh_status();
         return [ 'results' => $results, 'status' => $status ];
     }
+    /** Register hooks for dependency status refresh listeners. */
+    public function hooks() {
+        // Refresh dependency status upon plugin operations
+        add_action( 'activated_plugin', function( $plugin, $network_wide = false ) { $this->refresh_status(); }, 10, 2 );
+        add_action( 'deactivated_plugin', function( $plugin, $network_wide = false ) { $this->refresh_status(); }, 10, 2 );
+        add_action( 'upgrader_process_complete', function( $upgrader, $options ) { $this->refresh_status(); }, 10, 2 );
+        add_action( 'deleted_plugin', function( $plugin, $deleted ) { $this->refresh_status(); }, 10, 2 );
+        // Also refresh when active plugins option changes (covers edge cases)
+        add_action( 'update_option_active_plugins', function( $old, $new, $option ) { $this->refresh_status(); }, 10, 3 );
+        add_action( 'update_site_option_active_sitewide_plugins', function( $old, $new, $option ) { $this->refresh_status(); }, 10, 3 );
+    }
 }
