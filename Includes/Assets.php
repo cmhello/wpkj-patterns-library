@@ -50,13 +50,12 @@ class Assets {
         }
 
         $config = [
-            'apiBase'            => get_option( 'wpkj_patterns_library_api_base', home_url( '/wp-json/wpkj/v1' ) ),
-            'jwt'                => get_option( 'wpkj_patterns_library_jwt', '' ),
-            'restNonce'          => wp_create_nonce( 'wp_rest' ),
-            'activeSlugs'        => $active_slugs,
-            'canInstallPlugins'  => current_user_can( 'install_plugins' ),
+            // Frontend only needs local REST nonce and context
+            'restNonce'             => wp_create_nonce( 'wp_rest' ),
+            'activeSlugs'           => $active_slugs,
+            'canInstallPlugins'     => current_user_can( 'install_plugins' ),
             'adminUrlPluginInstall' => admin_url( 'plugin-install.php?tab=search&s=' ),
-            'adminUrlPlugins'    => admin_url( 'plugins.php' ),
+            'adminUrlPlugins'       => admin_url( 'plugins.php' ),
         ];
         wp_localize_script( 'wpkj-pl-editor', 'WPKJPatternsConfig', $config );
 

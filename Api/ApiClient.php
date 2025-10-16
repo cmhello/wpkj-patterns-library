@@ -48,7 +48,25 @@ class ApiClient {
     private function build_url( string $path, array $params = [] ) : string {
         $url = $this->base_url . ltrim( $path, '/' );
         if ( ! empty( $params ) ) {
-            $url = add_query_arg( $params, $url );
+            // Normalize array params for category[] and type[] support
+            $normalized = [];
+            foreach ( $params as $key => $val ) {
+                if ( in_array( $key, [ 'category', 'categories', 'type', 'types' ], true ) ) {
+                    // Accept scalar, comma string, or array; serialize as repeated []
+                    $arr = is_array( $val ) ? $val : ( is_string( $val ) ? preg_split( '/\s*,\s*/', trim( $val ) ) : [ $val ] );
+                    $arr = array_filter( array_map( 'trim', array_map( 'strval', $arr ) ) );
+                    // Force [] suffix for remote compatibility
+                    if ( 'categories' === $key || 'category' === $key ) {
+                        $normalized['category[]'] = $arr; // category[]=a&category[]=b
+                    } else {
+                        $normalized['type[]'] = $arr; // type[]=a&type[]=b
+                    }
+                } else {
+                    $normalized[ $key ] = $val;
+                }
+            }
+            // add_query_arg serializes arrays as repeated keys ([] encoded)
+            $url = add_query_arg( $normalized, $url );
         }
         return $url;
     }
@@ -82,7 +100,8 @@ class ApiClient {
             $headers['Authorization'] = 'Bearer ' . $jwt;
         }
 
-        $response = wp_remote_get( $url, [ 'headers' => $headers, 'timeout' => 15 ] );
+        // Basic rate limiting: avoid hammering on repeated failures
+        $response = $this->robust_get( $url, $headers );
         if ( is_wp_error( $response ) ) {
             return [];
         }
@@ -123,7 +142,7 @@ class ApiClient {
             $headers['Authorization'] = 'Bearer ' . $jwt;
         }
 
-        $response = wp_remote_get( $this->build_url( $path, $params ), [ 'headers' => $headers, 'timeout' => 15 ] );
+        $response = $this->robust_get( $this->build_url( $path, $params ), $headers );
         if ( is_wp_error( $response ) ) {
             return [];
         }
@@ -167,6 +186,21 @@ class ApiClient {
             'orderby'  => 'date',
             'order'    => 'DESC',
         ] );
+        // Normalize category/type filters
+        foreach ( [ 'category', 'categories', 'type', 'types' ] as $k ) {
+            if ( isset( $args[ $k ] ) ) {
+                $v = $args[ $k ];
+                $arr = is_array( $v ) ? $v : ( is_string( $v ) ? preg_split( '/\s*,\s*/', trim( $v ) ) : [ $v ] );
+                $arr = array_filter( array_map( 'trim', array_map( 'strval', $arr ) ) );
+                if ( 'category' === $k || 'categories' === $k ) {
+                    $args['category[]'] = $arr;
+                    unset( $args['categories'], $args['category'] );
+                } else {
+                    $args['type[]'] = $arr;
+                    unset( $args['types'], $args['type'] );
+                }
+            }
+        }
         $data = $this->request( 'patterns', $args );
         return is_array( $data ) ? $data : [];
     }
@@ -179,6 +213,20 @@ class ApiClient {
             'orderby'  => 'date',
             'order'    => 'DESC',
         ] );
+        foreach ( [ 'category', 'categories', 'type', 'types' ] as $k ) {
+            if ( isset( $args[ $k ] ) ) {
+                $v = $args[ $k ];
+                $arr = is_array( $v ) ? $v : ( is_string( $v ) ? preg_split( '/\s*,\s*/', trim( $v ) ) : [ $v ] );
+                $arr = array_filter( array_map( 'trim', array_map( 'strval', $arr ) ) );
+                if ( 'category' === $k || 'categories' === $k ) {
+                    $args['category[]'] = $arr;
+                    unset( $args['categories'], $args['category'] );
+                } else {
+                    $args['type[]'] = $arr;
+                    unset( $args['types'], $args['type'] );
+                }
+            }
+        }
         $data = $this->request_min( 'patterns', $args );
         return is_array( $data ) ? $data : [];
     }
@@ -217,6 +265,12 @@ class ApiClient {
         return is_array( $data ) ? $data : [];
     }
 
+    /** Get single pattern detail by ID. */
+    public function get_pattern( int $id ) : array {
+        $data = $this->request( 'patterns/' . $id );
+        return is_array( $data ) ? $data : [];
+    }
+
     /** Get dependencies list. */
     public function get_dependencies() : array {
         $data = $this->request( 'dependencies' );
@@ -226,7 +280,98 @@ class ApiClient {
     /** Search patterns by keyword. */
     public function search( string $q, array $args = [] ) : array {
         $params = wp_parse_args( $args, [ 'q' => $q ] );
+        // Normalize category/type filters if provided in $args
+        foreach ( [ 'category', 'categories', 'type', 'types' ] as $k ) {
+            if ( isset( $params[ $k ] ) ) {
+                $v = $params[ $k ];
+                $arr = is_array( $v ) ? $v : ( is_string( $v ) ? preg_split( '/\s*,\s*/', trim( $v ) ) : [ $v ] );
+                $arr = array_filter( array_map( 'trim', array_map( 'strval', $arr ) ) );
+                if ( 'category' === $k || 'categories' === $k ) {
+                    $params['category[]'] = $arr;
+                    unset( $params['categories'], $params['category'] );
+                } else {
+                    $params['type[]'] = $arr;
+                    unset( $params['types'], $params['type'] );
+                }
+            }
+        }
         $data = $this->request( 'search', $params );
         return is_array( $data ) ? $data : [];
+    }
+
+    /**
+     * Import a pattern (server-side POST, no caching).
+     * Returns parsed JSON or empty array on failure.
+     */
+    public function import_pattern( int $id ) : array {
+        $path    = 'patterns/' . $id . '/import';
+        $url     = $this->build_url( $path );
+        $headers = $this->get_headers();
+        // Inject JWT from server-side option if present; frontend does not pass tokens.
+        $jwt     = get_option( 'wpkj_patterns_library_jwt', '' );
+        if ( ! empty( $jwt ) ) {
+            $headers['Authorization'] = 'Bearer ' . $jwt;
+        }
+        $headers['Content-Type'] = 'application/json';
+
+        $response = wp_remote_post( $url, [ 'headers' => $headers, 'timeout' => 20, 'body' => json_encode( [] ) ] );
+        if ( is_wp_error( $response ) ) {
+            return [];
+        }
+        $body = wp_remote_retrieve_body( $response );
+        $data = json_decode( $body, true );
+        return ( null === $data ) ? [] : $data;
+    }
+
+    /**
+     * Robust GET with simple rate limit and exponential backoff on 5xx.
+     * - Tracks last failure timestamp in transient for 60s cooldown.
+     * - Retries up to 3 times with backoff 0.5s, 1s, 2s for 5xx.
+     */
+    private function robust_get( string $url, array $headers ) {
+        $cool_key = 'wpkj_pl_cool_' . md5( parse_url( $url, PHP_URL_HOST ) . parse_url( $url, PHP_URL_PATH ) );
+        $cool_until = (int) get_transient( $cool_key );
+        if ( $cool_until > time() ) {
+            return new \WP_Error( 'wpkj_pl_rate_limited', 'Rate limited due to previous failures' );
+        }
+
+        $timeouts = [ 15, 15, 15 ];
+        $backoffs = [ 0.5, 1.0, 2.0 ];
+        for ( $i = 0; $i < 3; $i++ ) {
+            $response = wp_remote_get( $url, [ 'headers' => $headers, 'timeout' => $timeouts[ $i ] ] );
+            if ( is_wp_error( $response ) ) {
+                // Network error: set short cooldown and bail
+                set_transient( $cool_key, time() + 30, 60 );
+                return $response;
+            }
+            $code = wp_remote_retrieve_response_code( $response );
+            if ( $code >= 500 ) {
+                // Backoff on server errors
+                usleep( (int) ( $backoffs[ $i ] * 1000000 ) );
+                continue;
+            }
+            // Success or 4xx: return immediately (4xx will be handled by caller)
+            if ( $code >= 200 && $code < 300 ) {
+                return $response;
+            } else {
+                return $response;
+            }
+        }
+        // After retries, set cooldown for 60s
+        set_transient( $cool_key, time() + 60, 60 );
+        return new \WP_Error( 'wpkj_pl_backoff_fail', 'Remote server error after retries' );
+    }
+
+    /** Test connectivity to remote manager API. Returns [ 'ok' => bool, 'code' => int, 'message' => string ]. */
+    public function test_connectivity() : array {
+        $url = $this->build_url( 'categories' );
+        $headers = $this->get_headers();
+        $response = $this->robust_get( $url, $headers );
+        if ( is_wp_error( $response ) ) {
+            return [ 'ok' => false, 'code' => 0, 'message' => $response->get_error_message() ];
+        }
+        $code = wp_remote_retrieve_response_code( $response );
+        $ok = ( $code >= 200 && $code < 300 );
+        return [ 'ok' => $ok, 'code' => $code, 'message' => $ok ? 'OK' : ( wp_remote_retrieve_response_message( $response ) ?: 'Error' ) ];
     }
 }

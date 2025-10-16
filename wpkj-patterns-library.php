@@ -178,6 +178,23 @@ add_action( 'admin_post_wpkj_pl_clear_cache', function() {
     exit;
 } );
 
+// Admin: test remote connectivity and show result
+add_action( 'admin_post_wpkj_pl_test_connectivity', function() {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_die( __( 'Insufficient permissions.', 'wpkj-patterns-library' ) );
+    }
+    check_admin_referer( 'wpkj_pl_test_connectivity' );
+    $result = ( new \WPKJ\PatternsLibrary\Api\ApiClient() )->test_connectivity();
+    $url = add_query_arg( [
+        'tested' => 1,
+        'ok'     => $result['ok'] ? 1 : 0,
+        'code'   => intval( $result['code'] ),
+        'msg'    => rawurlencode( $result['message'] ),
+    ], admin_url( 'options-general.php?page=wpkj-patterns-library' ) );
+    wp_safe_redirect( $url );
+    exit;
+} );
+
 // Auto-clear plugin cache when critical settings change (API base or JWT)
 add_action( 'update_option_wpkj_patterns_library_api_base', function( $old, $new, $option ) {
     // Clearing by prefix ensures both value and timeout entries are removed
@@ -216,4 +233,5 @@ add_action( 'update_option_wpkj_patterns_library_cache_ttl', function( $old, $ne
 add_action( 'rest_api_init', function() {
     ( new \WPKJ\PatternsLibrary\Api\DepsController() )->register_routes();
     ( new \WPKJ\PatternsLibrary\Api\FavoritesController() )->register_routes();
+    ( new \WPKJ\PatternsLibrary\Api\ManagerProxyController() )->register_routes();
 } );

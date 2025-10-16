@@ -4,6 +4,7 @@ namespace WPKJ\PatternsLibrary\Includes;
 use WPKJ\PatternsLibrary\Api\ApiClient;
 use WPKJ\PatternsLibrary\Api\FavoritesController;
 use WPKJ\PatternsLibrary\Api\DepsController;
+use WPKJ\PatternsLibrary\Api\ManagerProxyController;
 use WPKJ\PatternsLibrary\Includes\Assets;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -29,6 +30,7 @@ class Core {
         add_action( 'rest_api_init', function() {
             ( new FavoritesController() )->register_routes();
             ( new DepsController() )->register_routes();
+            ( new ManagerProxyController() )->register_routes();
         } );
         $this->assets->hooks();
     }

@@ -15,42 +15,13 @@
         return;
     }
 
-    const cfg = window.WPKJPatternsConfig || { apiBase: '', jwt: '', restNonce: '', activeSlugs: [], canInstallPlugins: false, adminUrlPluginInstall: '', adminUrlPlugins: '' };
+    const cfg = window.WPKJPatternsConfig || { restNonce: '', activeSlugs: [], canInstallPlugins: false, adminUrlPluginInstall: '', adminUrlPlugins: '' };
     const PER_PAGE = 18;
     const FAV_KEY = 'wpkj_pl_favorites_ids';
     const IMPORT_HISTORY_KEY = 'wpkj_pl_import_history';
     const SEARCH_HISTORY_KEY = 'wpkj_pl_search_history';
 
-    const fetchJSON = async ( path, params = {}, opts = {} ) => {
-        const url = new URL( (cfg.apiBase || '') + path, window.location.origin );
-        const method = ( opts && opts.method ) ? opts.method : 'GET';
-        let body;
-        if ( method === 'GET' ) {
-            Object.entries( params ).forEach( ([k,v]) => {
-                if ( Array.isArray( v ) ) {
-                    v.forEach( (val) => url.searchParams.append( k + '[]', val ) );
-                } else if ( v !== undefined && v !== null ) {
-                    url.searchParams.set( k, v );
-                }
-            } );
-        } else {
-            body = JSON.stringify( params || {} );
-        }
-        const headers = { 'Accept': 'application/json' };
-        if ( method !== 'GET' ) headers['Content-Type'] = 'application/json';
-        if ( cfg.jwt ) headers['Authorization'] = 'Bearer ' + cfg.jwt;
-        try {
-            const res = await fetch( url.toString(), { method, headers, body } );
-            if ( ! res.ok ) {
-                if ( opts && opts.silent ) return [];
-                throw new Error( 'HTTP ' + res.status );
-            }
-            return res.json();
-        } catch (e) {
-            if ( opts && opts.silent ) return [];
-            throw e;
-        }
-    };
+    // Removed legacy fetchJSON (direct remote calls). All requests go via local REST proxy.
 
     // Library plugin REST base helper (user favorites stored locally on this site)
     const fetchPL = async ( path, params = {}, opts = {} ) => {
@@ -243,7 +214,7 @@
                 if ( selectedCategories && selectedCategories.length ) params['category'] = selectedCategories;
                 if ( selectedTypes && selectedTypes.length ) params['type'] = selectedTypes;
                 setSkeletonCount( reset ? PER_PAGE : Math.min( 8, PER_PAGE ) );
-                const data = await fetchJSON( isSearch ? '/search' : '/patterns', params );
+                const data = await fetchPL( isSearch ? '/manager/search' : '/manager/patterns', params );
                 // Record search history only for first page of a new search
                 if ( isSearch && requestPage === 1 ) {
                     setSearchHistory( prev => {
@@ -282,8 +253,8 @@
         const loadTaxonomies = async () => {
             try {
                 const [ cats, tys ] = await Promise.all([
-                    fetchJSON( '/categories', {}, { silent: true } ),
-                    fetchJSON( '/types', {}, { silent: true } )
+                    fetchPL( '/manager/categories', {}, { silent: true } ),
+                    fetchPL( '/manager/types', {}, { silent: true } )
                 ]);
                 setCategories( Array.isArray( cats ) ? cats : [] );
                 setTypes( Array.isArray( tys ) ? tys : [] );
@@ -478,7 +449,7 @@
                                     el( 'div', { className: 'wpkj-pl-import-item-title', onMouseEnter: async () => {
                                         try {
                                             if ( it && it.id && ! it.featured_image ) {
-                                                const det = await fetchJSON( `/patterns/${it.id}`, {}, { silent: true } );
+                                                const det = await fetchPL( `/manager/patterns/${it.id}`, {}, { silent: true } );
                                                 const thumb = det ? getThumbFromItem( det ) : '';
                                                 if ( thumb ) {
                                                     setImportHistory( prev => {
@@ -495,7 +466,7 @@
                                             el( 'img', { src: it.featured_image, alt: it.title || ('#' + it.id) } )
                                         ) : null )
                                     ),
-                                    el( Button, { isSecondary: true, onClick: async () => { if ( it.content ) { insertContent( it.content ); } else { try { const det = await fetchJSON( `/patterns/${it.id}`, {}, { silent: true } ); if ( det && det.content ) insertContent( det.content ); } catch(e) {} } } }, __( 'Import', 'wpkj-patterns-library' ) )
+                                    el( Button, { isSecondary: true, onClick: async () => { if ( it.content ) { insertContent( it.content ); } else { try { const det = await fetchPL( `/manager/patterns/${it.id}`, {}, { silent: true } ); if ( det && det.content ) insertContent( det.content ); } catch(e) {} } } }, __( 'Import', 'wpkj-patterns-library' ) )
                                 ) )
                             ),
                             el( Button, { isTertiary: true, onClick: () => { setImportHistory( [] ); writeImportHistory( [] ); } }, __( 'Clear', 'wpkj-patterns-library' ) )
@@ -530,7 +501,7 @@
                                                         thumb ? el( 'img', { src: thumb, alt: it.title || ('#' + it.id), className: 'wpkj-pl-thumb', loading: 'lazy', onError: (e) => { e.currentTarget.style.visibility = 'hidden'; } } ) : el( 'div', { className: 'wpkj-pl-thumb' }, '' ),
                                                         el( 'div', { className: 'wpkj-pl-card-overlay' },
                                                             el( 'a', { href: link, target: '_blank', rel: 'noopener', className: 'components-button is-secondary' }, __( 'Preview', 'wpkj-patterns-library' ) ),
-                                                            el( Button, { isPrimary: true, onClick: async () => { insertContent( it.content || '' ); try { await fetchJSON( `/patterns/${it.id}/import`, {}, { method: 'POST', silent: true } ); } catch(e) {} setImportHistory( prev => { const entry = { id: it.id, title: it.title || ('#' + it.id), link: it.link || '#', content: it.content || '', featured_image: getThumbFromItem( it ), ts: Date.now() }; const dedup = prev.filter( x => x.id !== entry.id ); const next = [ entry, ...dedup ].slice(0,10); writeImportHistory( next ); return next; } ); } }, __( 'Import', 'wpkj-patterns-library' ) ),
+                                                            el( Button, { isPrimary: true, onClick: async () => { insertContent( it.content || '' ); try { await fetchPL( `/manager/patterns/${it.id}`, {}, { method: 'POST', silent: true } ); } catch(e) {} setImportHistory( prev => { const entry = { id: it.id, title: it.title || ('#' + it.id), link: it.link || '#', content: it.content || '', featured_image: getThumbFromItem( it ), ts: Date.now() }; const dedup = prev.filter( x => x.id !== entry.id ); const next = [ entry, ...dedup ].slice(0,10); writeImportHistory( next ); return next; } ); } }, __( 'Import', 'wpkj-patterns-library' ) ),
                                                             el( Button, { className: 'wpkj-pl-fav-toggle' + ( isFav ? ' is-active' : '' ), isSecondary: true, onClick: toggleFav, 'aria-label': __( 'Favorite', 'wpkj-patterns-library' ), title: __( 'Favorite', 'wpkj-patterns-library' ) }, isFav ? '★' : '☆' )
                                                         )
                                                     ),
