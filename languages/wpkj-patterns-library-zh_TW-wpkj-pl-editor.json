@@ -1,0 +1,47 @@
+{
+  "translation-revision-date": "2025-10-16 17:20+0800",
+  "generator": "Manual",
+  "domain": "wpkj-patterns-library",
+  "locale_data": {
+    "messages": {
+      "": {
+        "domain": "wpkj-patterns-library",
+        "lang": "zh_TW",
+        "plural-forms": "nplurals=1; plural=0;"
+      },
+      "Patterns Library": ["樣板庫"],
+      "Required Plugins": ["必需外掛"],
+      "Ready": ["就緒"],
+      "Installed, inactive": ["已安裝，未啟用"],
+      "Missing": ["缺少"],
+      "Install All": ["全部安裝"],
+      "Recheck": ["重新檢查"],
+      "Manage Plugins": ["管理外掛"],
+      "Patterns": ["樣板"],
+      "Pages": ["頁面"],
+      "Search": ["搜尋"],
+      "Type and press Enter": ["輸入後按 Enter"],
+      "Recent searches": ["最近搜尋"],
+      "Clear": ["清除"],
+      "Order by": ["排序依據"],
+      "Date": ["日期"],
+      "Title": ["標題"],
+      "Popular": ["熱門"],
+      "Order": ["排序"],
+      "Favorites": ["收藏"],
+      "Types": ["類型"],
+      "Categories": ["分類"],
+      "Recent imports": ["最近匯入"],
+      "Import": ["匯入"],
+      "All Patterns": ["全部樣板"],
+      "Preview": ["預覽"],
+      "Favorite": ["收藏"],
+      "No results found.": ["未找到結果。"],
+      "Load more": ["載入更多"],
+      "No more": ["沒有更多"]
+    }
+  },
+  "comment": {
+    "reference": "assets/js/editor.js"
+  }
+}

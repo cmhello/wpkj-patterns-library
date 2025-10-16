@@ -222,7 +222,7 @@
         // Preview is handled via external link, no in-modal preview state
 
         // Simple debounce for search and filters
-        const debounce = (fn, wait = 300) => {
+        const debounce = (fn, wait = 500) => {
             let t;
             return (...args) => {
                 clearTimeout( t );
@@ -230,14 +230,14 @@
             };
         };
 
-        const load = async ( reset = false ) => {
+        const load = async ( reset = false, queryOverride = null ) => {
             setLoading( true );
             setError( '' );
             setIsAppending( ! reset );
             try {
                 const requestPage = reset ? 1 : ( pageRef.current + 1 );
-                const trimmed = (query || '').trim();
-                const isSearch = trimmed.length > 0;
+                const trimmed = ( ( queryOverride !== null ? queryOverride : (query || '') ) ).trim();
+                const isSearch = trimmed.length >= 2;
                 const params = { per_page: PER_PAGE, page: requestPage, orderby: orderBy, order: orderDir };
                 if ( isSearch ) params['q'] = trimmed;
                 if ( selectedCategories && selectedCategories.length ) params['category'] = selectedCategories;
@@ -354,7 +354,7 @@
             // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [ isOpen ] );
 
-        // Debounced reload when query or filters change
+        // Debounced reload when filters change (query does NOT auto-trigger)
         useEffect( () => {
             if ( ! isOpen ) return;
             const debounced = debounce( () => {
@@ -363,10 +363,10 @@
                 setPage( 1 );
                 pageRef.current = 1;
                 load( true );
-            }, 300 );
+            }, 500 );
             debounced();
             // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [ query, selectedCategories.join(','), selectedTypes.join(','), orderBy, orderDir ] );
+        }, [ selectedCategories.join(','), selectedTypes.join(','), orderBy, orderDir ] );
 
         return el( Fragment, null,
             isOpen && el( Modal, {
@@ -405,14 +405,21 @@
                     el( 'aside', { className: 'wpkj-pl-sidebar' },
                         el( TextControl, {
                             value: query,
-                            placeholder: __( 'Search', 'wpkj-patterns-library' ),
+                            placeholder: __( 'Type and press Enter', 'wpkj-patterns-library' ),
                             onChange: (v) => setQuery( v ),
-                            onKeyDown: (e) => { if ( e.key === 'Enter' ) { setHasMore( true ); setItems( [] ); setPage( 1 ); pageRef.current = 1; load( true ); } },
+                            onKeyDown: (e) => {
+                                if ( e.key === 'Enter' ) {
+                                    const trimmed = (query || '').trim();
+                                    if ( trimmed.length === 0 || trimmed.length >= 2 ) {
+                                        setHasMore( true ); setItems( [] ); setPage( 1 ); pageRef.current = 1; load( true, query );
+                                    }
+                                }
+                            },
                         } ),
                         ( searchHistory && searchHistory.length ) ? el( 'div', { className: 'wpkj-pl-search-history' },
                             el( 'div', { className: 'wpkj-pl-filter-title' }, __( 'Recent searches', 'wpkj-patterns-library' ) ),
                             el( 'div', { className: 'wpkj-pl-search-chips' },
-                                searchHistory.slice( 0, 6 ).map( (qv, idx) => el( Button, { key: 'q-'+idx, isSecondary: true, onClick: () => { setQuery( qv ); setHasMore( true ); setItems( [] ); setPage( 1 ); pageRef.current = 1; load( true ); } }, qv ) )
+                                searchHistory.slice( 0, 6 ).map( (qv, idx) => el( Button, { key: 'q-'+idx, isSecondary: true, onClick: () => { setQuery( qv ); setHasMore( true ); setItems( [] ); setPage( 1 ); pageRef.current = 1; load( true, qv ); } }, qv ) )
                             ),
                             el( Button, { isTertiary: true, onClick: () => { setSearchHistory( [] ); writeSearchHistory( [] ); } }, __( 'Clear', 'wpkj-patterns-library' ) )
                         ) : null,
@@ -438,6 +445,7 @@
                             } )
                         ),
                         el( Button, { className: 'wpkj-pl-fav' , isSecondary: !onlyFavorites, isPrimary: onlyFavorites, onClick: () => setOnlyFavorites( !onlyFavorites ) }, __( 'Favorites', 'wpkj-patterns-library' ) ),
+                        el( Button, { className: 'wpkj-pl-all', isSecondary: true, onClick: () => { setQuery(''); setSelectedCategories([]); setSelectedTypes([]); setOnlyFavorites(false); setHasMore(true); setItems([]); setPage(1); pageRef.current = 1; load(true, ''); } }, __( 'All Patterns', 'wpkj-patterns-library' ) ),
                         el( 'div', { className: 'wpkj-pl-filter-group' },
                             el( 'div', { className: 'wpkj-pl-filter-title' }, __( 'Types', 'wpkj-patterns-library' ) ),
                             types && types.length ? types.map( (t) => el( CheckboxControl, {
