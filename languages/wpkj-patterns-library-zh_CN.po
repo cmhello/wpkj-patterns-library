@@ -1,132 +1,203 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: WPKJ Patterns Library 0.3.0\n"
-"POT-Creation-Date: 2025-10-15 00:00+0000\n"
-"PO-Revision-Date: 2025-10-15 00:00+0000\n"
-"Last-Translator: WPKJ Team <dev@wpkj.com>\n"
+"POT-Creation-Date: 2025-10-16 17:20+0800\n"
+"PO-Revision-Date: 2025-10-16 17:20+0800\n"
+"Last-Translator: WordPress大学 <support@wpdaxue.com>\n"
 "Language-Team: Simplified Chinese\n"
 "Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Trae AI\n"
+"X-Generator: Poedit 3.5\n"
 "X-Domain: wpkj-patterns-library\n"
+"X-Poedit-KeywordsList: __;_e;_n:1,2;_x:1,2c;_ex:1,2c;_nx:4c,1,2;esc_attr__;"
+"esc_attr_e;esc_attr_x:1,2c;esc_html__;esc_html_e;esc_html_x:1,2c;"
+"_n_noop:1,2;_nx_noop:3c,1,2;__ngettext:1,2;__ngettext_noop:1,2\n"
+"X-Poedit-Basepath: ..\n"
+"X-Poedit-SearchPath-0: .\n"
 
-# PHP strings
-msgid "WPKJ Patterns Library"
-msgstr "WPKJ 样板库"
-
-msgid "Insufficient permissions."
-msgstr "权限不足。"
-
+#: Admin/Settings.php:15
 msgid "Patterns Library Settings"
 msgstr "样板库设置"
 
+#: Admin/Settings.php:16
 msgid "Configure API and caching for the Patterns Library."
 msgstr "配置样板库的 API 和缓存。"
 
+#: Admin/Settings.php:19
 msgid "API Base URL"
 msgstr "API 基础地址"
 
+#: Admin/Settings.php:24
 msgid "Cache TTL (seconds)"
 msgstr "缓存有效期（秒）"
 
+#: Admin/Settings.php:29
 msgid "Max Patterns Registered"
 msgstr "最大注册样板数量"
 
+#: Admin/Settings.php:34
 msgid "JWT Token (optional)"
 msgstr "JWT 令牌（可选）"
 
+# PHP strings
+#: Admin/Settings.php:42 wpkj-patterns-library.php:113
+#: wpkj-patterns-library.php:114
+msgid "WPKJ Patterns Library"
+msgstr "WPKJ 样板库"
+
+#: Admin/Settings.php:44
 msgid "Sync completed."
 msgstr "同步完成。"
 
+#: Admin/Settings.php:48
+#, php-format
 msgid "Cache cleared. %d entries removed."
 msgstr "缓存已清理。已移除 %d 条记录。"
 
+#: Admin/Settings.php:58
 msgid "Sync Now"
 msgstr "立即同步"
 
+#: Admin/Settings.php:59
 msgid "Clear Cache"
 msgstr "清理缓存"
 
+#: assets/js/editor.js:373 assets/js/editor.js:639
+msgid "Patterns Library"
+msgstr "样板库"
+
+#: assets/js/editor.js:380
+msgid "Required Plugins"
+msgstr "必需插件"
+
+#: assets/js/editor.js:383
+msgid "Ready"
+msgstr "就绪"
+
+#: assets/js/editor.js:383
+msgid "Installed, inactive"
+msgstr "已安装，未激活"
+
+#: assets/js/editor.js:383
+msgid "Missing"
+msgstr "缺少"
+
+#: assets/js/editor.js:392
+msgid "Install All"
+msgstr "全部安装"
+
+#: assets/js/editor.js:393
+msgid "Recheck"
+msgstr "重新检查"
+
+#: assets/js/editor.js:394
+msgid "Manage Plugins"
+msgstr "管理插件"
+
 # JS strings (editor.js)
+#: assets/js/editor.js:400
 msgid "Patterns"
 msgstr "样板"
 
+#: assets/js/editor.js:401
 msgid "Pages"
 msgstr "页面"
 
+#: assets/js/editor.js:408
 msgid "Search"
 msgstr "搜索"
 
+#: assets/js/editor.js:413
 msgid "Recent searches"
 msgstr "最近搜索"
 
+#: assets/js/editor.js:417 assets/js/editor.js:493
 msgid "Clear"
 msgstr "清除"
 
+#: assets/js/editor.js:421
 msgid "Order by"
 msgstr "排序字段"
 
+#: assets/js/editor.js:424
 msgid "Date"
 msgstr "日期"
 
+#: assets/js/editor.js:425
 msgid "Title"
 msgstr "标题"
 
+#: assets/js/editor.js:426
 msgid "Popular"
 msgstr "热门"
 
+#: assets/js/editor.js:431
 msgid "Order"
 msgstr "排序"
 
+#: assets/js/editor.js:440
 msgid "Favorites"
 msgstr "收藏"
 
+#: assets/js/editor.js:442
 msgid "Types"
 msgstr "类型"
 
+#: assets/js/editor.js:454
 msgid "Categories"
 msgstr "分类"
 
-msgid "Dependencies"
-msgstr "依赖"
-
-msgid "Required"
-msgstr "必需"
-
-msgid "Installed"
-msgstr "已安装"
-
-msgid "Install"
-msgstr "安装"
-
-msgid "Manage"
-msgstr "管理"
-
-msgid "No dependencies"
-msgstr "无依赖"
-
+#: assets/js/editor.js:467
 msgid "Recent imports"
 msgstr "最近导入"
 
-msgid "All Templates"
-msgstr "全部模板"
+#: assets/js/editor.js:490 assets/js/editor.js:525
+msgid "Import"
+msgstr "导入"
 
-msgid "No results found."
-msgstr "未找到结果。"
+# JS strings (editor.js)
+#: assets/js/editor.js:497
+msgid "All Patterns"
+msgstr "全部样板"
 
+#: assets/js/editor.js:524
 msgid "Preview"
 msgstr "预览"
 
+#: assets/js/editor.js:526
 msgid "Favorite"
 msgstr "收藏"
 
+#: assets/js/editor.js:562
+msgid "No results found."
+msgstr "未找到结果。"
+
+#: assets/js/editor.js:570
 msgid "Load more"
 msgstr "加载更多"
 
+#: assets/js/editor.js:570
 msgid "No more"
 msgstr "没有更多"
 
-msgid "Patterns Library"
-msgstr "样板库"
+#: wpkj-patterns-library.php:172
+msgid "Insufficient permissions."
+msgstr "权限不足。"
+
+#: wpkj-patterns-library.php:197
+msgid "WPKJ PL Dependencies Status TTL"
+msgstr "WPKJ PL 依赖项状态 TTL"
+
+#~ msgid "Insert"
+#~ msgstr "插入"
+
+#~ msgid "All Templates"
+#~ msgstr "全部模板"
+
+#~ msgid "Dependencies"
+#~ msgstr "依赖"
+
+#~ msgid "No dependencies"
+#~ msgstr "无依赖"

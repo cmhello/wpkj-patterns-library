@@ -6,6 +6,9 @@
     const { createElement: el, Fragment, useState, useEffect, useRef } = wp.element || {};
     const { __ } = wp.i18n || ((s)=>s);
     const domReady = ( wp.domReady || ( fn => fn() ) );
+    // Track last known insertion context to support insertion after selection is lost
+    let lastInsertionIndex = undefined;
+    let lastInsertionRoot = undefined;
 
     if ( ! registerPlugin ) {
         console.warn( '[WPKJ] plugins API missing, skipping UI init.' );
@@ -137,7 +140,51 @@
         try {
             const blocks = ( wp.blocks && wp.blocks.rawHandler ) ? wp.blocks.rawHandler( { HTML: html } ) : ( wp.blocks && wp.blocks.parse ? wp.blocks.parse( html ) : [] );
             if ( blocks && blocks.length ) {
-                wp.data.dispatch( 'core/editor' ).insertBlocks( blocks );
+                const beDispatch = wp.data && wp.data.dispatch ? wp.data.dispatch( 'core/block-editor' ) : null;
+                const beSelect = wp.data && wp.data.select ? wp.data.select( 'core/block-editor' ) : null;
+                if ( beDispatch && beSelect && typeof beDispatch.insertBlocks === 'function' ) {
+                    let index;
+                    let rootCid;
+                    try {
+                        let sel = beSelect.getSelectionStart ? beSelect.getSelectionStart() : null;
+                        if ( ( ! sel || ! sel.clientId ) && beSelect.getSelectedBlockClientId ) {
+                            const cid = beSelect.getSelectedBlockClientId();
+                            if ( cid ) sel = { clientId: cid };
+                        }
+                        if ( sel && sel.clientId ) {
+                            rootCid = beSelect.getBlockRootClientId ? beSelect.getBlockRootClientId( sel.clientId ) : undefined;
+                            if ( beSelect.getBlockIndex ) {
+                                const currentIndex = beSelect.getBlockIndex( sel.clientId, rootCid );
+                                index = ( typeof currentIndex === 'number' ? ( currentIndex + 1 ) : undefined );
+                            }
+                        }
+                    } catch(e) { index = undefined; }
+                    // Fallback to remembered insertion context
+                    if ( typeof index !== 'number' && typeof lastInsertionIndex === 'number' ) {
+                        index = lastInsertionIndex;
+                    }
+                    if ( ! rootCid && lastInsertionRoot ) {
+                        rootCid = lastInsertionRoot;
+                    }
+                    // Insert at computed index (after current selection) or fallback
+                    if ( typeof index === 'number' || rootCid ) {
+                        beDispatch.insertBlocks( blocks, index, rootCid );
+                    } else {
+                        beDispatch.insertBlocks( blocks );
+                    }
+                    try {
+                        if ( typeof index === 'number' ) {
+                            lastInsertionIndex = index + blocks.length;
+                            lastInsertionRoot = rootCid;
+                        }
+                    } catch(e) {}
+                } else {
+                    // Fallback to legacy store
+                    const legacy = wp.data && wp.data.dispatch ? wp.data.dispatch( 'core/editor' ) : null;
+                    if ( legacy && typeof legacy.insertBlocks === 'function' ) {
+                        legacy.insertBlocks( blocks );
+                    }
+                }
             }
         } catch (e) {
             console.error('[WPKJ] insert error', e);
@@ -323,7 +370,7 @@
 
         return el( Fragment, null,
             isOpen && el( Modal, {
-                title: __( 'Patterns', 'wpkj-patterns-library' ),
+                title: __( 'Patterns Library', 'wpkj-patterns-library' ),
                 onRequestClose: onClose,
                 className: 'wpkj-pl-modal',
             },
@@ -440,14 +487,14 @@
                                             el( 'img', { src: it.featured_image, alt: it.title || ('#' + it.id) } )
                                         ) : null )
                                     ),
-                                    el( Button, { isSecondary: true, onClick: async () => { if ( it.content ) { insertContent( it.content ); } else { try { const det = await fetchJSON( `/patterns/${it.id}`, {}, { silent: true } ); if ( det && det.content ) insertContent( det.content ); } catch(e) {} } } }, __( 'Insert', 'wpkj-patterns-library' ) )
+                                    el( Button, { isSecondary: true, onClick: async () => { if ( it.content ) { insertContent( it.content ); } else { try { const det = await fetchJSON( `/patterns/${it.id}`, {}, { silent: true } ); if ( det && det.content ) insertContent( det.content ); } catch(e) {} } } }, __( 'Import', 'wpkj-patterns-library' ) )
                                 ) )
                             ),
                             el( Button, { isTertiary: true, onClick: () => { setImportHistory( [] ); writeImportHistory( [] ); } }, __( 'Clear', 'wpkj-patterns-library' ) )
                         ) : null
                     ),
                     el( 'div', { className: 'wpkj-pl-main' },
-                        el( 'div', { className: 'wpkj-pl-heading' }, __( 'All Templates', 'wpkj-patterns-library' ) ),
+                        el( 'div', { className: 'wpkj-pl-heading' }, __( 'All Patterns', 'wpkj-patterns-library' ) ),
                         error && el( 'div', { className: 'notice notice-error' }, error ),
                         el( 'div', { className: 'wpkj-pl-content' },
                             el( 'div', { className: 'wpkj-pl-grid', ref: gridRef },
@@ -530,6 +577,28 @@
     };
 
     domReady( () => {
+        // Capture last clicked block to remember insertion point even if focus is lost
+        const captureFromEl = ( elTarget ) => {
+            try {
+                const blockEl = elTarget && elTarget.closest ? elTarget.closest( '.block-editor-block-list__block' ) : null;
+                const cidAttr = blockEl && blockEl.dataset ? blockEl.dataset.block : undefined;
+                if ( ! cidAttr ) return;
+                const beSelect = wp.data && wp.data.select ? wp.data.select( 'core/block-editor' ) : null;
+                if ( ! beSelect ) return;
+                const rootCid = beSelect.getBlockRootClientId ? beSelect.getBlockRootClientId( cidAttr ) : undefined;
+                let idx;
+                if ( beSelect.getBlockIndex ) {
+                    idx = beSelect.getBlockIndex( cidAttr, rootCid );
+                }
+                lastInsertionIndex = ( typeof idx === 'number' ? ( idx + 1 ) : undefined );
+                lastInsertionRoot = rootCid;
+            } catch(e) {}
+        };
+        const onMouseDown = (e) => captureFromEl( e.target );
+        const onClick = (e) => captureFromEl( e.target );
+        document.addEventListener( 'mousedown', onMouseDown, true );
+        document.addEventListener( 'click', onClick, true );
+
         // Minimal implementation: directly insert a button into left toolbar once
         const HeaderTrigger = () => {
             const [ open, setOpen ] = wp.element.useState( false );
@@ -537,8 +606,38 @@
                 el( wp.components.Button, {
                     className: 'components-button pat-library-button',
                     isPrimary: true,
-                    onClick: (e) => { e.preventDefault(); setOpen( true ); },
-                }, __( 'Patterns Library', 'wpkj-patterns-library' ) ),
+                    onClick: (e) => {
+                        e.preventDefault();
+                        try {
+                            const beSelect = wp.data && wp.data.select ? wp.data.select( 'core/block-editor' ) : null;
+                            if ( beSelect ) {
+                                let sel = beSelect.getSelectionStart ? beSelect.getSelectionStart() : null;
+                                if ( ( ! sel || ! sel.clientId ) && beSelect.getSelectedBlockClientId ) {
+                                    const cid = beSelect.getSelectedBlockClientId();
+                                    if ( cid ) sel = { clientId: cid };
+                                }
+                                if ( sel && sel.clientId ) {
+                                    const rootCid = beSelect.getBlockRootClientId ? beSelect.getBlockRootClientId( sel.clientId ) : undefined;
+                                    if ( beSelect.getBlockIndex ) {
+                                        const currentIndex = beSelect.getBlockIndex( sel.clientId, rootCid );
+                                        lastInsertionIndex = ( typeof currentIndex === 'number' ? ( currentIndex + 1 ) : undefined );
+                                        lastInsertionRoot = rootCid;
+                                    } else {
+                                        lastInsertionIndex = undefined;
+                                        lastInsertionRoot = rootCid;
+                                    }
+                                } else {
+                                    lastInsertionIndex = undefined;
+                                    lastInsertionRoot = undefined;
+                                }
+                            }
+                        } catch(err) { lastInsertionIndex = undefined; lastInsertionRoot = undefined; }
+                        setOpen( true );
+                    },
+                },
+                    el( 'span', { className: 'dashicons dashicons-layout', 'aria-hidden': true, style: { marginRight: '6px' } } ),
+                    __( 'Patterns Library', 'wpkj-patterns-library' )
+                ),
                 open && el( PatternsModal, { isOpen: open, onClose: () => setOpen( false ) } )
             );
         };
