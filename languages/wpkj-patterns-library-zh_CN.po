@@ -33,9 +33,6 @@ msgstr "API 基础地址"
 msgid "Cache TTL (seconds)"
 msgstr "缓存有效期（秒）"
 
-#: Admin/Settings.php:29
-msgid "Max Patterns Registered"
-msgstr "最大注册样板数量"
 
 #: Admin/Settings.php:34
 msgid "JWT Token (optional)"

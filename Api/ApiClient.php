@@ -25,7 +25,7 @@ class ApiClient {
      * otherwise fallback to the current site's `/wp-json/wpkj/v1`.
      */
     private function get_base_url() : string {
-        $default = trailingslashit( home_url( '/wp-json/wpkj/v1' ) );
+        $default = trailingslashit( 'https://mb.wpkz.cn/wp-json/wpkj/v1' );
         $option  = get_option( 'wpkj_patterns_library_api_base' );
         $base    = $option ? $option : apply_filters( 'wpkj_patterns_library_default_api_base', $default );
         return trailingslashit( $base );

@@ -9,7 +9,6 @@ class Settings {
     public function register_settings() {
         register_setting( 'wpkj_pl_settings', 'wpkj_patterns_library_api_base', [ 'type' => 'string', 'sanitize_callback' => 'esc_url_raw' ] );
         register_setting( 'wpkj_pl_settings', 'wpkj_patterns_library_cache_ttl', [ 'type' => 'integer', 'sanitize_callback' => 'absint', 'default' => 900 ] );
-        register_setting( 'wpkj_pl_settings', 'wpkj_patterns_library_max_register', [ 'type' => 'integer', 'sanitize_callback' => 'absint', 'default' => 200 ] );
         register_setting( 'wpkj_pl_settings', 'wpkj_patterns_library_jwt', [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ] );
 
         add_settings_section( 'wpkj_pl_main', __( 'Patterns Library Settings', 'wpkj-patterns-library' ), function() {
@@ -24,11 +23,6 @@ class Settings {
         add_settings_field( 'cache_ttl', __( 'Cache TTL (seconds)', 'wpkj-patterns-library' ), function() {
             $val = esc_attr( get_option( 'wpkj_patterns_library_cache_ttl', 900 ) );
             echo '<input type="number" min="60" step="30" name="wpkj_patterns_library_cache_ttl" value="' . $val . '" />';
-        }, 'wpkj-patterns-library', 'wpkj_pl_main' );
-
-        add_settings_field( 'max_register', __( 'Max Patterns Registered', 'wpkj-patterns-library' ), function() {
-            $val = esc_attr( get_option( 'wpkj_patterns_library_max_register', 200 ) );
-            echo '<input type="number" min="50" step="50" name="wpkj_patterns_library_max_register" value="' . $val . '" />';
         }, 'wpkj-patterns-library', 'wpkj_pl_main' );
 
         add_settings_field( 'jwt', __( 'JWT Token (optional)', 'wpkj-patterns-library' ), function() {
