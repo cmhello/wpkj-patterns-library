@@ -116,12 +116,12 @@ add_action( 'admin_init', function() {
 
 // Hook sync event
 add_action( 'wpkj_pl_sync_event', function() {
-    ( new \WPKJ\PatternsLibrary\Sync\Sync() )->run_sync();
+    ( new \WPKJ\PatternsLibrary\Includes\Sync() )->run_sync();
 } );
 
 // Manual sync action
 add_action( 'admin_post_wpkj_pl_sync_now', function() {
-    ( new \WPKJ\PatternsLibrary\Sync\Sync() )->run_sync();
+    ( new \WPKJ\PatternsLibrary\Includes\Sync() )->run_sync();
     wp_safe_redirect( admin_url( 'options-general.php?page=wpkj-patterns-library&synced=1' ) );
     exit;
 } );

@@ -1,5 +1,5 @@
 <?php
-namespace WPKJ\PatternsLibrary\Sync;
+namespace WPKJ\PatternsLibrary\Includes;
 
 use WPKJ\PatternsLibrary\Api\ApiClient;
 
