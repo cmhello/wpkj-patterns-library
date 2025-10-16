@@ -86,6 +86,12 @@ register_activation_hook( __FILE__, function() {
     if ( ! wp_next_scheduled( 'wpkj_pl_sync_event' ) ) {
         wp_schedule_event( time() + 60, 'hourly', 'wpkj_pl_sync_event' );
     }
+    // Schedule dependency status refresh using configured TTL interval
+    if ( ! wp_next_scheduled( 'wpkj_pl_deps_check_event' ) ) {
+        $ttl = (int) get_option( 'wpkj_patterns_library_cache_ttl', 900 );
+        $ttl = max( 60, $ttl );
+        wp_schedule_event( time() + 120, 'wpkj_pl_deps_ttl', 'wpkj_pl_deps_check_event' );
+    }
 } );
 
 // Deactivation: clear scheduled event
@@ -93,6 +99,11 @@ register_deactivation_hook( __FILE__, function() {
     $timestamp = wp_next_scheduled( 'wpkj_pl_sync_event' );
     if ( $timestamp ) {
         wp_unschedule_event( $timestamp, 'wpkj_pl_sync_event' );
+    }
+    // Unschedule dependency status refresh
+    $ts2 = wp_next_scheduled( 'wpkj_pl_deps_check_event' );
+    if ( $ts2 ) {
+        wp_unschedule_event( $ts2, 'wpkj_pl_deps_check_event' );
     }
 } );
 
@@ -118,6 +129,35 @@ add_action( 'admin_init', function() {
 add_action( 'wpkj_pl_sync_event', function() {
     ( new \WPKJ\PatternsLibrary\Includes\Sync() )->run_sync();
 } );
+
+// Dependency status refresh cron
+add_action( 'wpkj_pl_deps_check_event', function() {
+    ( new \WPKJ\PatternsLibrary\Includes\Dependencies() )->refresh_status();
+} );
+
+// Refresh dependency status upon plugin operations
+add_action( 'activated_plugin', function( $plugin, $network_wide = false ) {
+    ( new \WPKJ\PatternsLibrary\Includes\Dependencies() )->refresh_status();
+}, 10, 2 );
+add_action( 'deactivated_plugin', function( $plugin, $network_wide = false ) {
+    ( new \WPKJ\PatternsLibrary\Includes\Dependencies() )->refresh_status();
+}, 10, 2 );
+add_action( 'upgrader_process_complete', function( $upgrader, $options ) {
+    ( new \WPKJ\PatternsLibrary\Includes\Dependencies() )->refresh_status();
+}, 10, 2 );
+
+// Refresh on plugin deletion as well
+add_action( 'deleted_plugin', function( $plugin, $deleted ) {
+    ( new \WPKJ\PatternsLibrary\Includes\Dependencies() )->refresh_status();
+}, 10, 2 );
+
+// Also refresh when active plugins option changes (covers edge cases)
+add_action( 'update_option_active_plugins', function( $old, $new, $option ) {
+    ( new \WPKJ\PatternsLibrary\Includes\Dependencies() )->refresh_status();
+}, 10, 3 );
+add_action( 'update_site_option_active_sitewide_plugins', function( $old, $new, $option ) {
+    ( new \WPKJ\PatternsLibrary\Includes\Dependencies() )->refresh_status();
+}, 10, 3 );
 
 // Manual sync action
 add_action( 'admin_post_wpkj_pl_sync_now', function() {
@@ -147,3 +187,33 @@ add_action( 'update_option_wpkj_patterns_library_api_base', function( $old, $new
 add_action( 'update_option_wpkj_patterns_library_jwt', function( $old, $new, $option ) {
     ( new \WPKJ\PatternsLibrary\Includes\Cache() )->clear_all();
 }, 10, 3 );
+
+// Add custom cron schedule matching configured cache TTL
+add_filter( 'cron_schedules', function( $schedules ) {
+    $ttl = (int) get_option( 'wpkj_patterns_library_cache_ttl', 900 );
+    $ttl = max( 60, $ttl );
+    $schedules['wpkj_pl_deps_ttl'] = [
+        'interval' => $ttl,
+        'display'  => __( 'WPKJ PL Dependencies Status TTL', 'wpkj-patterns-library' ),
+    ];
+    return $schedules;
+} );
+
+// Reschedule dependency status cron when cache TTL option changes
+add_action( 'update_option_wpkj_patterns_library_cache_ttl', function( $old, $new ) {
+    $timestamp = wp_next_scheduled( 'wpkj_pl_deps_check_event' );
+    if ( $timestamp ) {
+        wp_unschedule_event( $timestamp, 'wpkj_pl_deps_check_event' );
+    }
+    // Ensure custom schedule is registered and reschedule with new TTL
+    $ttl = max( 60, (int) $new );
+    if ( ! wp_next_scheduled( 'wpkj_pl_deps_check_event' ) ) {
+        wp_schedule_event( time() + 60, 'wpkj_pl_deps_ttl', 'wpkj_pl_deps_check_event' );
+    }
+}, 10, 2 );
+
+// Register REST API routes for the plugin controllers
+add_action( 'rest_api_init', function() {
+    ( new \WPKJ\PatternsLibrary\Api\DepsController() )->register_routes();
+    ( new \WPKJ\PatternsLibrary\Api\FavoritesController() )->register_routes();
+} );

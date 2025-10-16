@@ -213,3 +213,30 @@
 .wpkj-pl-fav-toggle.is-active {
   color: #ffb300 !important;
 }
+
+/* Modal dependency overlay */
+.wpkj-pl-deps-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.92);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  display: none;
+  z-index: 10;
+}
+.wpkj-pl-deps-overlay.is-active { display: flex; justify-content: center; align-items: center; }
+.wpkj-pl-deps-overlay .wpkj-pl-deps-panel {
+  width: 520px;
+  max-width: 90%;
+  background: #fff;
+  border: 1px solid #ddd;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.15);
+  border-radius: 8px;
+  padding: 16px;
+}
+.wpkj-pl-deps-panel h3 { margin: 0 0 8px; }
+.wpkj-pl-deps-list { margin: 8px 0 12px; }
+.wpkj-pl-deps-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #eee; }
+.wpkj-pl-deps-row:last-child { border-bottom: none; }
+.wpkj-pl-deps-row .status { font-weight: 600; }
+.wpkj-pl-deps-actions { display: flex; gap: 8px; justify-content: flex-end; }

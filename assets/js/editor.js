@@ -166,8 +166,11 @@
         const gridRef = useRef( null );
         const [ importHistory, setImportHistory ] = useState( readImportHistory() );
         const [ searchHistory, setSearchHistory ] = useState( readSearchHistory() );
-        const [ deps, setDeps ] = useState( [] );
-        const [ depsLoading, setDepsLoading ] = useState( false );
+        // Dependencies overlay state
+        const [ depsStatus, setDepsStatus ] = useState( null );
+        const [ depsChecking, setDepsChecking ] = useState( false );
+        const [ depsInstalling, setDepsInstalling ] = useState( false );
+        const [ depsError, setDepsError ] = useState( '' );
         
         // Preview is handled via external link, no in-modal preview state
 
@@ -242,29 +245,46 @@
             }
         };
 
-        const loadDependencies = async () => {
-            setDepsLoading( true );
+        const checkDepsStatus = async ( opts = {} ) => {
+            setDepsChecking( true );
+            setDepsError( '' );
             try {
-                const list = await fetchPL( '/dependencies', {}, { silent: true } );
-                const normalized = Array.isArray( list ) ? list.map( (d) => {
-                    if ( typeof d === 'string' ) return { slug: d, name: d };
-                    const slug = d && d.info && d.info.slug ? d.info.slug : ( d && d.slug ? d.slug : '' );
-                    const name = d && d.name ? d.name : ( slug || '' );
-                    const required = !!( d && d.info && d.info.required );
-                    return { slug, name, required };
-                } ) : [];
-                setDeps( normalized.filter( x => x.slug ) );
-            } catch(e) {
-                setDeps( [] );
+                const force = !!opts.force;
+                const status = await fetchPL( '/deps-status', force ? { no_cache: 1 } : {}, { silent: true } );
+                if ( status && typeof status === 'object' ) {
+                    setDepsStatus( status );
+                } else {
+                    setDepsStatus( { all_ready: true, required: [] } );
+                }
+            } catch (e) {
+                setDepsError( e && e.message ? e.message : 'Deps check failed' );
+                setDepsStatus( { all_ready: true, required: [] } );
             } finally {
-                setDepsLoading( false );
+                setDepsChecking( false );
+            }
+        };
+
+        const installAllDeps = async () => {
+            if ( depsInstalling ) return;
+            setDepsInstalling( true );
+            setDepsError( '' );
+            try {
+                const pending = (depsStatus && Array.isArray( depsStatus.required )) ? depsStatus.required.filter( x => !(x.installed && x.active) ).map( x => x.slug ) : [];
+                const res = await fetchPL( '/deps-install', { slugs: pending }, { method: 'POST', silent: true } );
+                // After install, re-check status with forced refresh
+                await checkDepsStatus( { force: true } );
+            } catch (e) {
+                setDepsError( e && e.message ? e.message : 'Deps install failed' );
+            } finally {
+                setDepsInstalling( false );
             }
         };
 
         useEffect( () => {
             if ( isOpen ) {
                 loadTaxonomies();
-                loadDependencies();
+                // On open, read cached status (no force)
+                checkDepsStatus( { force: false } );
                 // Merge server favorites into local on open
                 ( async () => {
                     try {
@@ -307,6 +327,27 @@
                 onRequestClose: onClose,
                 className: 'wpkj-pl-modal',
             },
+                // Dependencies overlay (only show when not ready AND dependencies exist)
+                el( 'div', { className: 'wpkj-pl-deps-overlay' + ( (depsStatus && ! depsStatus.all_ready && Array.isArray( depsStatus.required ) && depsStatus.required.length > 0) ? ' is-active' : '' ) },
+                    ( depsStatus && ! depsStatus.all_ready && Array.isArray( depsStatus.required ) && depsStatus.required.length > 0 ) ? el( 'div', { className: 'wpkj-pl-deps-panel' },
+                        el( 'h3', null, __( 'Required Plugins', 'wpkj-patterns-library' ) ),
+                        depsChecking ? el( Spinner, null ) : el( 'div', { className: 'wpkj-pl-deps-list' },
+                            depsStatus.required.map( (r) => {
+                                const st = (r.installed && r.active) ? __( 'Ready', 'wpkj-patterns-library' ) : ( r.installed ? __( 'Installed, inactive', 'wpkj-patterns-library' ) : __( 'Missing', 'wpkj-patterns-library' ) );
+                                return el( 'div', { key: r.slug, className: 'wpkj-pl-deps-row' },
+                                    el( 'span', null, r.name || r.slug ),
+                                    el( 'span', { className: 'status' }, st )
+                                );
+                            } )
+                        ),
+                        depsError ? el( 'div', { className: 'notice notice-error' }, depsError ) : null,
+                        el( 'div', { className: 'wpkj-pl-deps-actions' },
+                            el( Button, { isPrimary: true, isBusy: depsInstalling, onClick: installAllDeps }, __( 'Install All', 'wpkj-patterns-library' ) ),
+                            el( Button, { isSecondary: true, onClick: () => checkDepsStatus( { force: true } ) }, __( 'Recheck', 'wpkj-patterns-library' ) ),
+                            el( 'a', { href: (cfg.adminUrlPlugins || '/wp-admin/plugins.php'), className: 'components-button is-tertiary', target: '_blank', rel: 'noopener' }, __( 'Manage Plugins', 'wpkj-patterns-library' ) )
+                        )
+                    ) : null
+                ),
                 el( 'div', { className: 'wpkj-pl-topbar' },
                     el( 'div', { className: 'wpkj-pl-tabs' },
                         el( Button, { isSecondary: activeTab !== 'patterns', isPrimary: activeTab === 'patterns', onClick: () => setActiveTab('patterns') }, __( 'Patterns', 'wpkj-patterns-library' ) ),
@@ -374,27 +415,7 @@
                                 }
                             } ) ) : null
                         ),
-                        el( 'div', { className: 'wpkj-pl-filter-group' },
-                            el( 'div', { className: 'wpkj-pl-filter-title' }, __( 'Dependencies', 'wpkj-patterns-library' ) ),
-                            depsLoading ? el( Spinner, null ) : ( deps && deps.length ? deps.map( (dep) => {
-                                const isInstalled = Array.isArray( cfg.activeSlugs ) && cfg.activeSlugs.includes( dep.slug );
-                                const installUrl = ( cfg.adminUrlPluginInstall || '/wp-admin/plugin-install.php?tab=search&s=' ) + encodeURIComponent( dep.slug );
-                                const manageUrl = cfg.adminUrlPlugins || '/wp-admin/plugins.php';
-                                const tryInstall = async () => {
-                                    if ( window.wp && window.wp.updates && typeof window.wp.updates.installPlugin === 'function' && cfg.canInstallPlugins ) {
-                                        try { await window.wp.updates.installPlugin( { slug: dep.slug } ); } catch(e) {}
-                                    } else {
-                                        window.open( installUrl, '_blank' );
-                                    }
-                                };
-                                return el( 'div', { key: dep.slug, className: 'wpkj-pl-dep-row' },
-                                    el( 'span', null, dep.name || dep.slug ),
-                                    dep.required ? el( 'span', { style: { marginLeft: 8, color: '#a50' } }, __( 'Required', 'wpkj-patterns-library' ) ) : null,
-                                    isInstalled ? el( 'span', { style: { marginLeft: 8, color: '#0a0' } }, __( 'Installed', 'wpkj-patterns-library' ) ) : el( Button, { isSecondary: true, onClick: tryInstall, style: { marginLeft: 8 } }, __( 'Install', 'wpkj-patterns-library' ) ),
-                                    el( 'a', { href: manageUrl, target: '_blank', rel: 'noopener', style: { marginLeft: 8 } }, __( 'Manage', 'wpkj-patterns-library' ) )
-                                );
-                            } ) : el( 'div', { style: { color: '#666' } }, __( 'No dependencies', 'wpkj-patterns-library' ) ) )
-                        ),
+                        // Dependencies list removed; handled via overlay
                         ( importHistory && importHistory.length ) ? el( 'div', { className: 'wpkj-pl-import-history' },
                             el( 'div', { className: 'wpkj-pl-filter-title' }, __( 'Recent imports', 'wpkj-patterns-library' ) ),
                             el( 'div', { className: 'wpkj-pl-import-list' },
