@@ -32,6 +32,11 @@
   position: sticky;
   top: 0;
 }
+.wpkj-pl-sidebar > .wpkj-pl-fav,
+.wpkj-pl-sidebar > .wpkj-pl-all {
+  margin-top: 8px;
+  margin-right: 8px;
+}
 .wpkj-pl-main { 
   padding-left: 4px;
   height: 100%;
@@ -47,6 +52,9 @@
 .wpkj-pl-filter-group { min-width: 220px; margin: 15px 0;}
 .wpkj-pl-filter-title { font-weight: 600; margin-bottom: 6px; }
 .wpkj-pl-filter-actions { display: flex; gap: 6px; margin: 6px 0; }
+/* Add spacing between checkbox items */
+.wpkj-pl-filter-group .components-base-control { margin-bottom: 8px; }
+.wpkj-pl-filter-group .components-base-control:last-child { margin-bottom: 0; }
 .wpkj-pl-content { margin-top: 12px; }
 .wpkj-pl-quick { display: none !important; }
 .wpkj-pl-grid {
