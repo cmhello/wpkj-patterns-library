@@ -13,6 +13,17 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class DepsController {
     const NAMESPACE = 'wpkj-pl/v1';
+    
+    /** @var ApiClient Singleton instance */
+    private $api;
+    
+    /** @var Dependencies Singleton instance */
+    private $deps;
+    
+    public function __construct() {
+        $this->api = new ApiClient();
+        $this->deps = new Dependencies();
+    }
 
     /** Register routes for dependency info, status and installation. */
     public function register_routes() {
@@ -52,27 +63,24 @@ class DepsController {
 
     /** Get dependencies list from manager via ApiClient. */
     public function get_dependencies( $request ) {
-        $client = new ApiClient();
-        $data = $client->get_dependencies();
+        $data = $this->api->get_dependencies();
         return rest_ensure_response( is_array( $data ) ? $data : [] );
     }
 
     /** Return dependency readiness status; optionally bypass cache. */
     public function get_status( $request ) {
-        $deps = new Dependencies();
         $no_cache = $request->get_param( 'no_cache' );
         if ( $no_cache && in_array( strtolower( (string) $no_cache ), [ '1', 'true', 'yes' ], true ) ) {
-            return rest_ensure_response( $deps->refresh_status() );
+            return rest_ensure_response( $this->deps->refresh_status() );
         }
-        return rest_ensure_response( $deps->get_status() );
+        return rest_ensure_response( $this->deps->get_status() );
     }
 
     /** Ensure install/activate all required dependencies. */
     public function install_all( $request ) {
         $slugs = $request->get_param( 'slugs' );
         if ( ! is_array( $slugs ) ) $slugs = [];
-        $deps = new Dependencies();
-        $res = $deps->ensure_all_ready( $slugs );
+        $res = $this->deps->ensure_all_ready( $slugs );
         return rest_ensure_response( $res );
     }
 }

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WPKJ Patterns Library
  * Description: Client-side plugin to discover and import block patterns from WPKJ Patterns Manager via REST API.
- * Version: 0.5.1
+ * Version: 0.6.0
  * Author: WPKJ Team
  * Text Domain: wpkj-patterns-library
  * Domain Path: /languages
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define plugin constants for modular development and reliable paths
 if ( ! defined( 'WPKJ_PL_VERSION' ) ) {
-    define( 'WPKJ_PL_VERSION', '0.5.1' );
+    define( 'WPKJ_PL_VERSION', '0.6.0' );
 }
 if ( ! defined( 'WPKJ_PL_FILE' ) ) {
     define( 'WPKJ_PL_FILE', __FILE__ );

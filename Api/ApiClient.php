@@ -89,7 +89,8 @@ class ApiClient {
 
         $bypass = (bool) apply_filters( 'wpkj_patterns_library_bypass_cache', false, $path, $params );
         if ( ! $bypass ) {
-            $cached = get_transient( $cache_key );
+            // Try object cache first (Redis/Memcached if available)
+            $cached = wp_cache_get( $cache_key, 'wpkj_patterns_library' );
             if ( false !== $cached ) {
                 return $cached;
             }
@@ -114,7 +115,9 @@ class ApiClient {
             return [];
         }
 
-        set_transient( $cache_key, $data, $this->get_cache_ttl( $path, $params ) );
+        $ttl = $this->get_cache_ttl( $path, $params );
+        // Set in object cache (with group for easy bulk clearing)
+        wp_cache_set( $cache_key, $data, 'wpkj_patterns_library', $ttl );
         return $data;
     }
 
@@ -131,7 +134,7 @@ class ApiClient {
 
         $bypass = (bool) apply_filters( 'wpkj_patterns_library_bypass_cache', false, $path, $params_min );
         if ( ! $bypass ) {
-            $cached = get_transient( $cache_key );
+            $cached = wp_cache_get( $cache_key, 'wpkj_patterns_library' );
             if ( false !== $cached ) {
                 return $cached;
             }
@@ -144,7 +147,8 @@ class ApiClient {
             $headers['Authorization'] = 'Bearer ' . $jwt;
         }
 
-        $response = $this->robust_get( $this->build_url( $path, $params ), $headers );
+        // Use the same URL with fields=min parameter
+        $response = $this->robust_get( $url, $headers );
         if ( is_wp_error( $response ) ) {
             return [];
         }
@@ -171,7 +175,8 @@ class ApiClient {
             $data = $min;
         }
 
-        set_transient( $cache_key, $data, $this->get_cache_ttl( $path, $params_min ) );
+        $ttl = $this->get_cache_ttl( $path, $params_min );
+        wp_cache_set( $cache_key, $data, 'wpkj_patterns_library', $ttl );
         return $data;
     }
 
@@ -340,12 +345,12 @@ class ApiClient {
 
     /**
      * Robust GET with simple rate limit and exponential backoff on 5xx.
-     * - Tracks last failure timestamp in transient for 60s cooldown.
+     * - Tracks last failure timestamp in object cache for 60s cooldown.
      * - Retries up to 3 times with backoff 0.5s, 1s, 2s for 5xx.
      */
     private function robust_get( string $url, array $headers ) {
         $cool_key = 'wpkj_pl_cool_' . md5( parse_url( $url, PHP_URL_HOST ) . parse_url( $url, PHP_URL_PATH ) );
-        $cool_until = (int) get_transient( $cool_key );
+        $cool_until = (int) wp_cache_get( $cool_key, 'wpkj_patterns_library' );
         if ( $cool_until > time() ) {
             return new \WP_Error( 'wpkj_pl_rate_limited', 'Rate limited due to previous failures' );
         }
@@ -356,7 +361,7 @@ class ApiClient {
             $response = wp_remote_get( $url, [ 'headers' => $headers, 'timeout' => $timeouts[ $i ] ] );
             if ( is_wp_error( $response ) ) {
                 // Network error: set short cooldown and bail
-                set_transient( $cool_key, time() + 30, 60 );
+                wp_cache_set( $cool_key, time() + 30, 'wpkj_patterns_library', 60 );
                 return $response;
             }
             $code = wp_remote_retrieve_response_code( $response );
@@ -373,7 +378,7 @@ class ApiClient {
             }
         }
         // After retries, set cooldown for 60s
-        set_transient( $cool_key, time() + 60, 60 );
+        wp_cache_set( $cool_key, time() + 60, 'wpkj_patterns_library', 60 );
         return new \WP_Error( 'wpkj_pl_backoff_fail', 'Remote server error after retries' );
     }
 

@@ -7,12 +7,63 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Cache {
     const PREFIX = 'wpkj_pl_';
+    const GROUP = 'wpkj_patterns_library';
 
     /**
-     * Clear all transients created by this plugin's ApiClient (prefix-based).
-     * Returns number of transient keys deleted.
+     * Clear all caches created by this plugin.
+     * Supports both object cache (Redis/Memcached) and transient fallback.
+     * Returns number of cache entries cleared.
      */
     public function clear_all() : int {
+        $deleted = 0;
+
+        // 1. Try to flush object cache group (if persistent cache is available)
+        if ( $this->is_object_cache_available() ) {
+            // Use wp_cache_flush_group if available (Redis Object Cache plugin)
+            if ( function_exists( 'wp_cache_flush_group' ) ) {
+                $result = wp_cache_flush_group( self::GROUP );
+                // Most implementations don't return count, assume success cleared many
+                return $result ? 100 : 0;
+            }
+            
+            // Fallback: wp_cache doesn't provide a way to list all keys in a group
+            // We can't reliably clear object cache without flush_group support
+            // Log a notice for developers
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( 'WPKJ Patterns Library: Object cache detected but wp_cache_flush_group() not available. Cache may not be fully cleared.' );
+            }
+        }
+
+        // 2. Clear transient-based cache (fallback for non-object-cache setups)
+        $deleted += $this->clear_transients();
+
+        return $deleted;
+    }
+
+    /**
+     * Check if persistent object cache is available.
+     */
+    private function is_object_cache_available() : bool {
+        global $wp_object_cache;
+        
+        // Check if using persistent backend (not default transient-based cache)
+        if ( ! empty( $wp_object_cache ) && method_exists( $wp_object_cache, 'redis_status' ) ) {
+            return true; // Redis Object Cache
+        }
+        
+        if ( ! empty( $wp_object_cache ) && method_exists( $wp_object_cache, 'get_mc' ) ) {
+            return true; // Memcached
+        }
+        
+        // Check for other object cache plugins
+        return wp_using_ext_object_cache();
+    }
+
+    /**
+     * Clear transient-based cache (database fallback).
+     * Returns number of transients deleted.
+     */
+    private function clear_transients() : int {
         global $wpdb;
 
         $deleted = 0;

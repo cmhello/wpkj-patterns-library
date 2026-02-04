@@ -11,6 +11,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class ManagerProxyController {
     const NAMESPACE = 'wpkj-pl/v1';
+    
+    /** @var ApiClient Singleton instance */
+    private $api;
+    
+    public function __construct() {
+        $this->api = new ApiClient();
+    }
 
     /** Register proxy routes. */
     public function register_routes() {
@@ -96,30 +103,25 @@ class ManagerProxyController {
         $typ = $req->get_param( 'type' );
         if ( is_array( $cat ) ) $args['category'] = array_map( 'intval', $cat );
         if ( is_array( $typ ) ) $args['type']     = array_map( 'intval', $typ );
-        $api = new ApiClient();
-        return rest_ensure_response( $api->get_patterns( $args ) );
+        return rest_ensure_response( $this->api->get_patterns( $args ) );
     }
 
     public function get_pattern( \WP_REST_Request $req ) {
         $id = (int) $req->get_param( 'id' );
-        $api = new ApiClient();
-        return rest_ensure_response( $api->get_pattern( $id ) );
+        return rest_ensure_response( $this->api->get_pattern( $id ) );
     }
 
     public function import_pattern( \WP_REST_Request $req ) {
         $id = (int) $req->get_param( 'id' );
-        $api = new ApiClient();
-        return rest_ensure_response( $api->import_pattern( $id ) );
+        return rest_ensure_response( $this->api->import_pattern( $id ) );
     }
 
     public function get_categories() {
-        $api = new ApiClient();
-        return rest_ensure_response( $api->get_categories() );
+        return rest_ensure_response( $this->api->get_categories() );
     }
 
     public function get_types() {
-        $api = new ApiClient();
-        return rest_ensure_response( $api->get_types() );
+        return rest_ensure_response( $this->api->get_types() );
     }
 
     public function search( \WP_REST_Request $req ) {
@@ -134,7 +136,6 @@ class ManagerProxyController {
         $typ = $req->get_param( 'type' );
         if ( is_array( $cat ) ) $args['category'] = array_map( 'intval', $cat );
         if ( is_array( $typ ) ) $args['type']     = array_map( 'intval', $typ );
-        $api = new ApiClient();
-        return rest_ensure_response( $api->search( $q, $args ) );
+        return rest_ensure_response( $this->api->search( $q, $args ) );
     }
 }
