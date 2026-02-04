@@ -162,6 +162,21 @@
         }
     };
 
+    // Sideload media from pattern content
+    const sideloadMedia = async ( pattern, onProgress ) => {
+        try {
+            const response = await fetchPL( '/sideload-media', {
+                content: pattern.content || '',
+                pattern_id: pattern.id
+            }, { method: 'POST' } );
+
+            return response;
+        } catch (e) {
+            console.error('[WPKJ] sideload error', e);
+            throw e;
+        }
+    };
+
     const PatternsModal = ( { isOpen, onClose } ) => {
         const [ query, setQuery ] = useState( '' );
         const [ loading, setLoading ] = useState( false );
@@ -189,6 +204,11 @@
         const [ depsChecking, setDepsChecking ] = useState( false );
         const [ depsInstalling, setDepsInstalling ] = useState( false );
         const [ depsError, setDepsError ] = useState( '' );
+        // Media sideload state
+        const [ sideloadProgress, setSideloadProgress ] = useState( null ); // { current, total, text }
+        const [ confirmImportPattern, setConfirmImportPattern ] = useState( null ); // Pattern to import
+        const [ importStatus, setImportStatus ] = useState( null ); // 'importing' | 'downloading' | 'success' | 'error'
+        const [ importMessage, setImportMessage ] = useState( '' ); // Status message to display
         
         // Preview is handled via external link, no in-modal preview state
 
@@ -348,6 +368,16 @@
         }, [ selectedCategories.join(','), selectedTypes.join(','), orderBy, orderDir ] );
 
         return el( Fragment, null,
+            // Progress bar (floating top)
+            sideloadProgress && el( 'div', { className: 'wpkj-pl-progress-bar' },
+                el( 'div', { className: 'wpkj-pl-progress-text' }, sideloadProgress.text || __( 'Downloading...', 'wpkj-patterns-library' ) ),
+                el( 'div', { className: 'wpkj-pl-progress-track' },
+                    el( 'div', { 
+                        className: 'wpkj-pl-progress-fill', 
+                        style: { width: sideloadProgress.percent + '%' } 
+                    } )
+                )
+            ),
             isOpen && el( Modal, {
                 title: __( 'Patterns Library', 'wpkj-patterns-library' ),
                 onRequestClose: onClose,
@@ -371,6 +401,171 @@
                             el( Button, { isPrimary: true, isBusy: depsInstalling, onClick: installAllDeps }, __( 'Install All', 'wpkj-patterns-library' ) ),
                             el( Button, { isSecondary: true, onClick: () => checkDepsStatus( { force: true } ) }, __( 'Recheck', 'wpkj-patterns-library' ) ),
                             el( 'a', { href: (cfg.adminUrlPlugins || '/wp-admin/plugins.php'), className: 'components-button is-tertiary', target: '_blank', rel: 'noopener' }, __( 'Manage Plugins', 'wpkj-patterns-library' ) )
+                        )
+                    ) : null
+                ),
+                // Confirm import overlay (similar to deps overlay)
+                el( 'div', { className: 'wpkj-pl-confirm-overlay' + ( confirmImportPattern ? ' is-active' : '' ) },
+                    confirmImportPattern ? el( 'div', { className: 'wpkj-pl-confirm-panel' },
+                        // Show different UI based on import status
+                        ! importStatus ? el( Fragment, null,
+                            // Initial confirmation state
+                            el( 'h3', null, __( 'Import Pattern', 'wpkj-patterns-library' ) ),
+                            el( 'p', null, __( 'Download external images and videos to your media library?', 'wpkj-patterns-library' ) ),
+                            el( 'p', { style: { fontSize: '13px', color: '#666', marginTop: '8px' } }, 
+                                __( 'Note: Videos will be skipped and need manual replacement.', 'wpkj-patterns-library' ) 
+                            ),
+                            el( 'div', { className: 'wpkj-pl-confirm-actions' },
+                                el( Button, { 
+                                    isSecondary: true,
+                                    onClick: async () => {
+                                        // Import without sideload
+                                        const pattern = confirmImportPattern;
+                                        setImportStatus( 'importing' );
+                                        setImportMessage( __( 'Importing pattern...', 'wpkj-patterns-library' ) );
+                                        
+                                        try {
+                                            insertContent( pattern.content || '' );
+                                            
+                                            // Update history
+                                            try { 
+                                                await fetchPL( `/manager/patterns/${pattern.id}`, {}, { method: 'POST', silent: true } ); 
+                                            } catch(e) {}
+                                            setImportHistory( prev => {
+                                                const entry = { 
+                                                    id: pattern.id, 
+                                                    title: pattern.title || ('#' + pattern.id), 
+                                                    link: pattern.link || '#', 
+                                                    content: pattern.content || '', 
+                                                    featured_image: getThumbFromItem( pattern ), 
+                                                    ts: Date.now() 
+                                                };
+                                                const dedup = prev.filter( x => x.id !== entry.id );
+                                                const next = [ entry, ...dedup ].slice(0,10);
+                                                writeImportHistory( next );
+                                                return next;
+                                            } );
+                                            
+                                            // Show success
+                                            setImportStatus( 'success' );
+                                            setImportMessage( __( 'Pattern imported successfully!', 'wpkj-patterns-library' ) );
+                                            
+                                            // Auto close after 3 seconds
+                                            setTimeout( () => {
+                                                setConfirmImportPattern( null );
+                                                setImportStatus( null );
+                                                setImportMessage( '' );
+                                            }, 3000 );
+                                        } catch (e) {
+                                            setImportStatus( 'error' );
+                                            setImportMessage( __( 'Import failed. Please try again.', 'wpkj-patterns-library' ) );
+                                            setTimeout( () => {
+                                                setConfirmImportPattern( null );
+                                                setImportStatus( null );
+                                                setImportMessage( '' );
+                                            }, 3000 );
+                                        }
+                                    }
+                                }, __( 'No, Import Only', 'wpkj-patterns-library' ) ),
+                                el( Button, { 
+                                    isPrimary: true,
+                                    onClick: async () => {
+                                        // Import with sideload
+                                        const pattern = confirmImportPattern;
+                                        setImportStatus( 'downloading' );
+                                        setImportMessage( __( 'Analyzing media...', 'wpkj-patterns-library' ) );
+                                        
+                                        try {
+                                            const result = await sideloadMedia( pattern );
+                                            
+                                            if ( result && result.success ) {
+                                                // Insert content (with replaced URLs)
+                                                insertContent( result.content || pattern.content || '' );
+                                                
+                                                // Update history
+                                                try { 
+                                                    await fetchPL( `/manager/patterns/${pattern.id}`, {}, { method: 'POST', silent: true } ); 
+                                                } catch(e) {}
+                                                setImportHistory( prev => {
+                                                    const entry = { 
+                                                        id: pattern.id, 
+                                                        title: pattern.title || ('#' + pattern.id), 
+                                                        link: pattern.link || '#', 
+                                                        content: result.content || pattern.content || '', 
+                                                        featured_image: getThumbFromItem( pattern ), 
+                                                        ts: Date.now() 
+                                                    };
+                                                    const dedup = prev.filter( x => x.id !== entry.id );
+                                                    const next = [ entry, ...dedup ].slice(0,10);
+                                                    writeImportHistory( next );
+                                                    return next;
+                                                } );
+                                                
+                                                // Build success message
+                                                const stats = result.stats || {};
+                                                let msg = __( 'Pattern imported successfully!', 'wpkj-patterns-library' );
+                                                const details = [];
+                                                if ( stats.downloaded > 0 ) {
+                                                    details.push( stats.downloaded + ' ' + __( 'media files downloaded', 'wpkj-patterns-library' ) );
+                                                }
+                                                if ( stats.failed > 0 ) {
+                                                    details.push( stats.failed + ' ' + __( 'failed', 'wpkj-patterns-library' ) );
+                                                }
+                                                if ( stats.videos > 0 ) {
+                                                    details.push( stats.videos + ' ' + __( 'video(s) need manual replacement', 'wpkj-patterns-library' ) );
+                                                }
+                                                if ( details.length > 0 ) {
+                                                    msg += '\n' + details.join( ', ' ) + '.';
+                                                }
+                                                
+                                                setImportStatus( stats.failed > 0 ? 'warning' : 'success' );
+                                                setImportMessage( msg );
+                                                
+                                                // Auto close after 3 seconds
+                                                setTimeout( () => {
+                                                    setConfirmImportPattern( null );
+                                                    setImportStatus( null );
+                                                    setImportMessage( '' );
+                                                }, 3000 );
+                                            } else {
+                                                throw new Error( 'Sideload failed' );
+                                            }
+                                        } catch (e) {
+                                            // Fallback: insert original content
+                                            insertContent( pattern.content || '' );
+                                            
+                                            setImportStatus( 'error' );
+                                            setImportMessage( __( 'Media download failed. Pattern imported with original URLs.', 'wpkj-patterns-library' ) );
+                                            
+                                            // Auto close after 3 seconds
+                                            setTimeout( () => {
+                                                setConfirmImportPattern( null );
+                                                setImportStatus( null );
+                                                setImportMessage( '' );
+                                            }, 3000 );
+                                        }
+                                    }
+                                }, __( 'Yes, Download Media', 'wpkj-patterns-library' ) )
+                            )
+                        ) : el( Fragment, null,
+                            // Progress/Result state
+                            el( 'div', { className: 'wpkj-pl-import-status' },
+                                importStatus === 'importing' || importStatus === 'downloading' ? el( Spinner, null ) : null,
+                                el( 'div', { 
+                                    className: 'wpkj-pl-import-icon ' + importStatus,
+                                    style: { fontSize: '48px', textAlign: 'center', margin: '20px 0' }
+                                }, 
+                                    importStatus === 'success' ? '✓' : ( importStatus === 'error' ? '✕' : ( importStatus === 'warning' ? '⚠' : '' ) )
+                                ),
+                                el( 'p', { 
+                                    style: { 
+                                        textAlign: 'center', 
+                                        fontSize: '16px', 
+                                        whiteSpace: 'pre-line',
+                                        color: importStatus === 'error' ? '#d63638' : ( importStatus === 'warning' ? '#dba617' : '#00a32a' )
+                                    } 
+                                }, importMessage )
+                            )
                         )
                     ) : null
                 ),
@@ -517,7 +712,10 @@
                                                         thumb ? el( 'img', { src: thumb, alt: it.title || ('#' + it.id), className: 'wpkj-pl-thumb', loading: 'lazy', onError: (e) => { e.currentTarget.style.visibility = 'hidden'; } } ) : el( 'div', { className: 'wpkj-pl-thumb' }, '' ),
                                                         el( 'div', { className: 'wpkj-pl-card-overlay' },
                                                             el( 'a', { href: link, target: '_blank', rel: 'noopener', className: 'components-button is-secondary' }, __( 'Preview', 'wpkj-patterns-library' ) ),
-                                                            el( Button, { isPrimary: true, onClick: async () => { insertContent( it.content || '' ); try { await fetchPL( `/manager/patterns/${it.id}`, {}, { method: 'POST', silent: true } ); } catch(e) {} setImportHistory( prev => { const entry = { id: it.id, title: it.title || ('#' + it.id), link: it.link || '#', content: it.content || '', featured_image: getThumbFromItem( it ), ts: Date.now() }; const dedup = prev.filter( x => x.id !== entry.id ); const next = [ entry, ...dedup ].slice(0,10); writeImportHistory( next ); return next; } ); } }, __( 'Import', 'wpkj-patterns-library' ) ),
+                                                            el( Button, { 
+                                                                isPrimary: true, 
+                                                                onClick: () => setConfirmImportPattern( it )
+                                                            }, __( 'Import', 'wpkj-patterns-library' ) ),
                                                             el( Button, { className: 'wpkj-pl-fav-toggle' + ( isFav ? ' is-active' : '' ), isSecondary: true, onClick: toggleFav, 'aria-label': __( 'Favorite', 'wpkj-patterns-library' ), title: __( 'Favorite', 'wpkj-patterns-library' ) }, isFav ? '★' : '☆' )
                                                         )
                                                     ),

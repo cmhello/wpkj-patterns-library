@@ -5,6 +5,7 @@ use WPKJ\PatternsLibrary\Api\ApiClient;
 use WPKJ\PatternsLibrary\Api\FavoritesController;
 use WPKJ\PatternsLibrary\Api\DepsController;
 use WPKJ\PatternsLibrary\Api\ManagerProxyController;
+use WPKJ\PatternsLibrary\Api\MediaSideloadController;
 use WPKJ\PatternsLibrary\Includes\Assets;
 use WPKJ\PatternsLibrary\Includes\I18n;
 use WPKJ\PatternsLibrary\Includes\Scheduler;
@@ -53,6 +54,7 @@ class Core {
             ( new FavoritesController() )->register_routes();
             ( new DepsController() )->register_routes();
             ( new ManagerProxyController() )->register_routes();
+            ( new MediaSideloadController() )->register_routes();
         } );
         // Settings page hooks (menu + register settings)
         ( new Settings() )->hooks();

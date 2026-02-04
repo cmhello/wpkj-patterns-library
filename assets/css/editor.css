@@ -181,6 +181,41 @@
   font-weight: 600;
 }
 
+/* Progress bar (floating top) */
+.wpkj-pl-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000000;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 12px 20px;
+}
+.wpkj-pl-progress-text {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #1e1e1e;
+}
+.wpkj-pl-progress-track {
+  height: 6px;
+  background: #e5e5e5;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.wpkj-pl-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0073aa, #005177);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Confirm modal */
+.wpkj-pl-confirm-modal .components-modal__content {
+  padding: 20px;
+}
+
 @media (max-width: 640px) {
   .wpkj-pl-layout { 
     grid-template-columns: 1fr;
@@ -288,3 +323,49 @@
 .wpkj-pl-deps-row:last-child { border-bottom: none; }
 .wpkj-pl-deps-row .status { font-weight: 600; }
 .wpkj-pl-deps-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Confirm import overlay (similar to deps overlay) */
+.wpkj-pl-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.92);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  display: none;
+  z-index: 10;
+}
+.wpkj-pl-confirm-overlay.is-active { display: flex; justify-content: center; align-items: center; }
+.wpkj-pl-confirm-panel {
+  width: 480px;
+  max-width: 90%;
+  background: #fff;
+  border: 1px solid #ddd;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.15);
+  border-radius: 8px;
+  padding: 20px;
+}
+.wpkj-pl-confirm-panel h3 { margin: 0 0 12px; }
+.wpkj-pl-confirm-panel p { margin: 8px 0; }
+.wpkj-pl-confirm-actions { 
+  display: flex; 
+  gap: 8px; 
+  justify-content: flex-end; 
+  margin-top: 20px;
+}
+
+/* Import status display */
+.wpkj-pl-import-status {
+  text-align: center;
+  padding: 20px;
+}
+.wpkj-pl-import-status .components-spinner {
+  float: none;
+  margin: 20px auto;
+}
+.wpkj-pl-import-icon {
+  font-weight: bold;
+  line-height: 1;
+}
+.wpkj-pl-import-icon.success { color: #00a32a; }
+.wpkj-pl-import-icon.error { color: #d63638; }
+.wpkj-pl-import-icon.warning { color: #dba617; }

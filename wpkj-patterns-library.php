@@ -4,6 +4,7 @@
  * Description: Client-side plugin to discover and import block patterns from WPKJ Patterns Manager via REST API.
  * Version: 0.6.0
  * Author: WPKJ Team
+ * Author URI: https://www.wpdaxue.com
  * Text Domain: wpkj-patterns-library
  * Domain Path: /languages
  */
