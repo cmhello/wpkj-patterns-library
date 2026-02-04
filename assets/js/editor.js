@@ -20,8 +20,50 @@
     const FAV_KEY = 'wpkj_pl_favorites_ids';
     const IMPORT_HISTORY_KEY = 'wpkj_pl_import_history';
     const SEARCH_HISTORY_KEY = 'wpkj_pl_search_history';
+    const CACHE_PREFIX = 'wpkj_pl_cache_';
+    const CACHE_TTL = 15 * 60 * 1000; // 15 minutes in milliseconds
 
     // Removed legacy fetchJSON (direct remote calls). All requests go via local REST proxy.
+
+    // SessionStorage cache helpers
+    const getCached = ( key ) => {
+        try {
+            const cached = window.sessionStorage.getItem( CACHE_PREFIX + key );
+            if ( ! cached ) return null;
+            const data = JSON.parse( cached );
+            // Check expiry
+            if ( data.expiry && Date.now() > data.expiry ) {
+                window.sessionStorage.removeItem( CACHE_PREFIX + key );
+                return null;
+            }
+            return data.value;
+        } catch (e) {
+            return null;
+        }
+    };
+    const setCached = ( key, value, ttl = CACHE_TTL ) => {
+        try {
+            const data = {
+                value: value,
+                expiry: Date.now() + ttl
+            };
+            window.sessionStorage.setItem( CACHE_PREFIX + key, JSON.stringify( data ) );
+        } catch (e) {
+            // SessionStorage full or disabled, silently fail
+        }
+    };
+    const clearCache = () => {
+        try {
+            const keys = [];
+            for ( let i = 0; i < window.sessionStorage.length; i++ ) {
+                const key = window.sessionStorage.key( i );
+                if ( key && key.startsWith( CACHE_PREFIX ) ) {
+                    keys.push( key );
+                }
+            }
+            keys.forEach( k => window.sessionStorage.removeItem( k ) );
+        } catch (e) {}
+    };
 
     // Library plugin REST base helper (user favorites stored locally on this site)
     const fetchPL = async ( path, params = {}, opts = {} ) => {
@@ -40,6 +82,18 @@
         } else {
             body = JSON.stringify( params || {} );
         }
+
+        // Generate cache key for GET requests
+        const cacheKey = method === 'GET' ? path + '_' + JSON.stringify( params ) : null;
+        
+        // Check cache for GET requests (unless explicitly bypassed)
+        if ( method === 'GET' && ! ( opts && opts.noCache ) ) {
+            const cached = getCached( cacheKey );
+            if ( cached !== null ) {
+                return cached;
+            }
+        }
+
         const headers = { 'Accept': 'application/json' };
         if ( method !== 'GET' ) headers['Content-Type'] = 'application/json';
         if ( cfg.restNonce ) headers['X-WP-Nonce'] = cfg.restNonce;
@@ -49,7 +103,14 @@
                 if ( opts && opts.silent ) return [];
                 throw new Error( 'HTTP ' + res.status );
             }
-            return res.json();
+            const data = await res.json();
+            
+            // Cache successful GET responses
+            if ( method === 'GET' && cacheKey && data ) {
+                setCached( cacheKey, data );
+            }
+            
+            return data;
         } catch (e) {
             if ( opts && opts.silent ) return [];
             throw e;
@@ -278,11 +339,11 @@
             }
         };
 
-        const loadTaxonomies = async () => {
+        const loadTaxonomies = async ( forceRefresh = false ) => {
             try {
                 const [ cats, tys ] = await Promise.all([
-                    fetchPL( '/manager/categories', {}, { silent: true } ),
-                    fetchPL( '/manager/types', {}, { silent: true } )
+                    fetchPL( '/manager/categories', {}, { silent: true, noCache: forceRefresh } ),
+                    fetchPL( '/manager/types', {}, { silent: true, noCache: forceRefresh } )
                 ]);
                 setCategories( Array.isArray( cats ) ? cats : [] );
                 setTypes( Array.isArray( tys ) ? tys : [] );
@@ -416,6 +477,15 @@
                                 __( 'Note: Videos will be skipped and need manual replacement.', 'wpkj-patterns-library' ) 
                             ),
                             el( 'div', { className: 'wpkj-pl-confirm-actions' },
+                                el( Button, { 
+                                    isTertiary: true,
+                                    onClick: () => {
+                                        // Cancel - just close the overlay
+                                        setConfirmImportPattern( null );
+                                        setImportStatus( null );
+                                        setImportMessage( '' );
+                                    }
+                                }, __( 'Cancel', 'wpkj-patterns-library' ) ),
                                 el( Button, { 
                                     isSecondary: true,
                                     onClick: async () => {

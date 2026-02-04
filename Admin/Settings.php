@@ -74,10 +74,11 @@ class Settings {
         submit_button();
         echo '</form>';
         echo '<hr />';
+        $sync_url  = wp_nonce_url( admin_url( 'admin-post.php?action=wpkj_pl_sync_now' ), 'wpkj_pl_sync_now' );
         $clear_url = wp_nonce_url( admin_url( 'admin-post.php?action=wpkj_pl_clear_cache' ), 'wpkj_pl_clear_cache' );
         $test_url  = wp_nonce_url( admin_url( 'admin-post.php?action=wpkj_pl_test_connectivity' ), 'wpkj_pl_test_connectivity' );
         echo '<p>';
-        echo '<a class="button button-primary" href="' . esc_url( admin_url( 'admin-post.php?action=wpkj_pl_sync_now' ) ) . '">' . esc_html__( 'Sync Now', 'wpkj-patterns-library' ) . '</a> ';
+        echo '<a class="button button-primary" href="' . esc_url( $sync_url ) . '">' . esc_html__( 'Sync Now', 'wpkj-patterns-library' ) . '</a> ';
         echo '<a class="button" href="' . esc_url( $clear_url ) . '">' . esc_html__( 'Clear Cache', 'wpkj-patterns-library' ) . '</a> ';
         echo '<a class="button" href="' . esc_url( $test_url ) . '">' . esc_html__( 'Test Connectivity', 'wpkj-patterns-library' ) . '</a>';
         echo '</p>';

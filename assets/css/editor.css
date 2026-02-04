@@ -349,8 +349,11 @@
 .wpkj-pl-confirm-actions { 
   display: flex; 
   gap: 8px; 
-  justify-content: flex-end; 
+  justify-content: space-between; 
   margin-top: 20px;
+}
+.wpkj-pl-confirm-actions .components-button.is-tertiary {
+  margin-right: auto;
 }
 
 /* Import status display */

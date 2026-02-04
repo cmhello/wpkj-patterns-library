@@ -41,7 +41,9 @@ class Scheduler {
     }
 
     public function handle_sync_event() {
-        ( new Sync() )->run_sync();
+        $sync = new Sync();
+        $sync->run_sync();
+        $sync->mark_synced();
     }
 
     public function handle_deps_check_event() {

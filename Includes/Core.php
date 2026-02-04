@@ -60,5 +60,21 @@ class Core {
         ( new Settings() )->hooks();
 
         $this->assets->hooks();
+        
+        // Smart cache warmup on admin init (only if needed)
+        add_action( 'admin_init', function() {
+            // Only run in admin and for users who can edit posts
+            if ( is_admin() && current_user_can( 'edit_posts' ) ) {
+                $sync = new Sync();
+                // Check if warmup is needed, run in background if so
+                if ( $sync->should_sync() ) {
+                    // Use shutdown hook to avoid blocking page load
+                    add_action( 'shutdown', function() use ( $sync ) {
+                        $sync->run_sync();
+                        $sync->mark_synced();
+                    } );
+                }
+            }
+        }, 999 );
     }
 }

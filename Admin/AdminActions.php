@@ -22,7 +22,15 @@ class AdminActions {
     }
 
     public function handle_sync_now() {
-        ( new Sync() )->run_sync();
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( __( 'Insufficient permissions.', 'wpkj-patterns-library' ) );
+        }
+        check_admin_referer( 'wpkj_pl_sync_now' );
+        
+        $sync = new Sync();
+        $sync->run_sync();
+        $sync->mark_synced();
+        
         wp_safe_redirect( admin_url( 'options-general.php?page=wpkj-patterns-library&synced=1' ) );
         exit;
     }
