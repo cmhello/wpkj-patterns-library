@@ -213,7 +213,7 @@
                 if ( isSearch ) params['q'] = trimmed;
                 if ( selectedCategories && selectedCategories.length ) params['category'] = selectedCategories;
                 if ( selectedTypes && selectedTypes.length ) params['type'] = selectedTypes;
-                setSkeletonCount( reset ? PER_PAGE : Math.min( 8, PER_PAGE ) );
+                setSkeletonCount( reset ? PER_PAGE : PER_PAGE );
                 const data = await fetchPL( isSearch ? '/manager/search' : '/manager/patterns', params );
                 // Record search history only for first page of a new search
                 if ( isSearch && requestPage === 1 ) {
@@ -233,14 +233,22 @@
                 setPage( requestPage );
                 pageRef.current = requestPage;
                 setHasMore( added > 0 && ( Array.isArray( data ) ? data.length >= PER_PAGE : false ) );
-                // Smoothly bring the first newly added card into view on append
+                // Smoothly scroll to first newly loaded item on "Load more"
                 if ( ! reset && added > 0 && firstNewId !== undefined ) {
                     setTimeout( () => {
                         const sel = document.querySelector( '.wpkj-pl-grid .wpkj-pl-card[data-id="' + String( firstNewId ) + '"]' );
                         if ( sel && typeof sel.scrollIntoView === 'function' ) {
-                            sel.scrollIntoView( { block: 'nearest', inline: 'nearest', behavior: 'smooth' } );
+                            // Scroll with top alignment and offset for better UX
+                            sel.scrollIntoView( { block: 'start', inline: 'nearest', behavior: 'smooth' } );
+                            // Add small offset to avoid header overlap
+                            const modalContent = sel.closest( '.components-modal__content' );
+                            if ( modalContent ) {
+                                setTimeout( () => {
+                                    modalContent.scrollTop = Math.max( 0, modalContent.scrollTop - 20 );
+                                }, 300 );
+                            }
                         }
-                    }, 0 );
+                    }, 100 );
                 }
             } catch ( e ) {
                 setError( e.message || 'Network error' );
@@ -378,6 +386,8 @@
                             value: query,
                             placeholder: __( 'Type and press Enter', 'wpkj-patterns-library' ),
                             onChange: (v) => setQuery( v ),
+                            __next40pxDefaultSize: true,
+                            __nextHasNoMarginBottom: true,
                             onKeyDown: (e) => {
                                 if ( e.key === 'Enter' ) {
                                     const trimmed = (query || '').trim();
@@ -398,6 +408,8 @@
                             el( SelectControl, {
                                 label: __( 'Order by', 'wpkj-patterns-library' ),
                                 value: orderBy,
+                                __next40pxDefaultSize: true,
+                                __nextHasNoMarginBottom: true,
                                 options: [
                                     { label: __( 'Date', 'wpkj-patterns-library' ), value: 'date' },
                                     { label: __( 'Title', 'wpkj-patterns-library' ), value: 'title' },
@@ -408,6 +420,8 @@
                             el( SelectControl, {
                                 label: __( 'Order', 'wpkj-patterns-library' ),
                                 value: orderDir,
+                                __next40pxDefaultSize: true,
+                                __nextHasNoMarginBottom: true,
                                 options: [
                                     { label: 'DESC', value: 'DESC' },
                                     { label: 'ASC', value: 'ASC' },
@@ -423,6 +437,7 @@
                                 key: t.id,
                                 label: (t.name || '') + ' (' + (t.count || 0) + ')',
                                 checked: selectedTypes.includes( t.id ),
+                                __nextHasNoMarginBottom: true,
                                 onChange: (checked) => {
                                     const val = t.id;
                                     setSelectedTypes( checked ? [ ...selectedTypes, val ] : selectedTypes.filter( x => x !== val ) );
@@ -435,6 +450,7 @@
                                 key: c.id,
                                 label: (c.name || '') + ' (' + (c.count || 0) + ')',
                                 checked: selectedCategories.includes( c.id ),
+                                __nextHasNoMarginBottom: true,
                                 onChange: (checked) => {
                                     const val = c.id;
                                     setSelectedCategories( checked ? [ ...selectedCategories, val ] : selectedCategories.filter( x => x !== val ) );
@@ -513,14 +529,14 @@
 
                                     // If loading and appending, show skeletons after existing items
                                     if ( loading && ( isAppending && ( displayItems && displayItems.length ) ) ) {
-                                        const skelCount = skeletonCount || Math.min( PER_PAGE, 12 );
+                        const skelCount = skeletonCount || Math.min( PER_PAGE, 12 );
                                         for ( let i = 0; i < skelCount; i++ ) {
                                             cardEls.push(
                                                 el( 'div', { key: 'skel-' + i + '-' + pageRef.current, className: 'wpkj-pl-card skeleton' },
                                                     el( 'div', { className: 'wpkj-pl-card-media' },
                                                         el( 'div', { className: 'wpkj-pl-thumb skel' } )
                                                     ),
-                                                    el( 'div', { className: 'wpkj-pl-card-title skel' }, ' ' )
+                                                    el( 'div', { className: 'wpkj-pl-card-title skel' } )
                                                 )
                                             );
                                         }
@@ -533,7 +549,7 @@
                                             el( 'div', { className: 'wpkj-pl-card-media' },
                                                 el( 'div', { className: 'wpkj-pl-thumb skel' } )
                                             ),
-                                            el( 'div', { className: 'wpkj-pl-card-title skel' }, ' ' )
+                                            el( 'div', { className: 'wpkj-pl-card-title skel' } )
                                         ) );
                                     }
 

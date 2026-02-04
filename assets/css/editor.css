@@ -17,9 +17,26 @@
 }
 .wpkj-pl-topbar {display: none;justify-content: center;position: absolute;top: 15px;width: 40%;left: 30%;}
 .wpkj-pl-tabs { display: flex; gap: 8px; }
-.wpkj-pl-layout { display: grid; grid-template-columns: 260px 1fr; gap: 16px; }
-.wpkj-pl-sidebar { border-right: 1px solid #e5e5e5; padding-right: 12px; }
-.wpkj-pl-main { padding-left: 4px; }
+.wpkj-pl-layout { 
+  display: grid; 
+  grid-template-columns: 260px 1fr; 
+  gap: 16px;
+  height: calc(90vh - 120px); /* Modal height minus header/padding */
+  align-items: start;
+}
+.wpkj-pl-sidebar { 
+  border-right: 1px solid #e5e5e5; 
+  padding-right: 12px;
+  height: 100%;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
+}
+.wpkj-pl-main { 
+  padding-left: 4px;
+  height: 100%;
+  overflow-y: auto;
+}
 .wpkj-pl-heading { font-weight: 600; margin: 8px 0 4px; }
 .wpkj-pl-filters {
   display: flex;
@@ -48,6 +65,7 @@
   position: relative;
   overflow: hidden;
   border-radius: 6px;
+  min-height: 140px; /* Prevent collapse in skeleton state */
 }
 .wpkj-pl-thumb {
   width: 100%;
@@ -90,6 +108,7 @@
 /* Main actions under grid (moved Load more) */
 .wpkj-pl-main-actions {
   margin-top: 16px;
+  margin-bottom: 10px;
   display: flex;
   justify-content: center;
 }
@@ -155,13 +174,34 @@
 }
 
 @media (max-width: 640px) {
-  .wpkj-pl-layout { grid-template-columns: 1fr; }
-  .wpkj-pl-sidebar { border-right: none; padding-right: 0; }
+  .wpkj-pl-layout { 
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .wpkj-pl-sidebar { 
+    border-right: none; 
+    padding-right: 0;
+    height: auto;
+    overflow-y: visible;
+    position: static;
+  }
+  .wpkj-pl-main {
+    height: auto;
+    overflow-y: visible;
+  }
   .wpkj-pl-thumb { height: 120px; }
 }
 /* Skeleton, Favorites and empty state */
 .wpkj-pl-card.skeleton { animation: skelPulse 1.2s ease-in-out infinite; }
-.wpkj-pl-thumb.skel { background: linear-gradient(90deg,#eee,#f5f5f5,#eee); }
+.wpkj-pl-card.skeleton .wpkj-pl-card-media {
+  height: 140px; /* Force skeleton media container to have fixed height */
+}
+.wpkj-pl-thumb.skel { 
+  background: linear-gradient(90deg,#eee,#f5f5f5,#eee);
+  height: 100%; /* Fill parent container */
+  width: 100%;
+  display: block;
+}
 .wpkj-pl-card-title.skel { height: 16px; background: #eee; border-radius: 4px; }
 .wpkj-pl-fav-toggle.is-active { color: #ff9a00; }
 .wpkj-pl-empty { text-align: center; color: #666; padding: 24px 0; }

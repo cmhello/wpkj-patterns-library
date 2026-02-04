@@ -48,24 +48,26 @@ class ApiClient {
     private function build_url( string $path, array $params = [] ) : string {
         $url = $this->base_url . ltrim( $path, '/' );
         if ( ! empty( $params ) ) {
-            // Normalize array params for category[] and type[] support
+            // Normalize array params - use 'category' and 'type' as array values
             $normalized = [];
             foreach ( $params as $key => $val ) {
                 if ( in_array( $key, [ 'category', 'categories', 'type', 'types' ], true ) ) {
-                    // Accept scalar, comma string, or array; serialize as repeated []
+                    // Accept scalar, comma string, or array
                     $arr = is_array( $val ) ? $val : ( is_string( $val ) ? preg_split( '/\s*,\s*/', trim( $val ) ) : [ $val ] );
-                    $arr = array_filter( array_map( 'trim', array_map( 'strval', $arr ) ) );
-                    // Force [] suffix for remote compatibility
-                    if ( 'categories' === $key || 'category' === $key ) {
-                        $normalized['category[]'] = $arr; // category[]=a&category[]=b
-                    } else {
-                        $normalized['type[]'] = $arr; // type[]=a&type[]=b
+                    $arr = array_filter( array_map( 'intval', $arr ) ); // Convert to integers and filter empty
+                    if ( ! empty( $arr ) ) {
+                        // Use 'category' or 'type' as key (without []) - WordPress REST API will handle array
+                        if ( 'categories' === $key || 'category' === $key ) {
+                            $normalized['category'] = $arr;
+                        } else {
+                            $normalized['type'] = $arr;
+                        }
                     }
                 } else {
                     $normalized[ $key ] = $val;
                 }
             }
-            // add_query_arg serializes arrays as repeated keys ([] encoded)
+            // add_query_arg serializes arrays as repeated keys automatically
             $url = add_query_arg( $normalized, $url );
         }
         return $url;
@@ -186,18 +188,23 @@ class ApiClient {
             'orderby'  => 'date',
             'order'    => 'DESC',
         ] );
-        // Normalize category/type filters
+        // Normalize category/type filters to use 'category' and 'type' keys
         foreach ( [ 'category', 'categories', 'type', 'types' ] as $k ) {
             if ( isset( $args[ $k ] ) ) {
                 $v = $args[ $k ];
                 $arr = is_array( $v ) ? $v : ( is_string( $v ) ? preg_split( '/\s*,\s*/', trim( $v ) ) : [ $v ] );
-                $arr = array_filter( array_map( 'trim', array_map( 'strval', $arr ) ) );
-                if ( 'category' === $k || 'categories' === $k ) {
-                    $args['category[]'] = $arr;
-                    unset( $args['categories'], $args['category'] );
+                $arr = array_filter( array_map( 'intval', $arr ) );
+                if ( ! empty( $arr ) ) {
+                    if ( 'category' === $k || 'categories' === $k ) {
+                        $args['category'] = $arr;
+                        unset( $args['categories'] );
+                    } else {
+                        $args['type'] = $arr;
+                        unset( $args['types'] );
+                    }
                 } else {
-                    $args['type[]'] = $arr;
-                    unset( $args['types'], $args['type'] );
+                    // Remove empty filters
+                    unset( $args[ $k ] );
                 }
             }
         }
@@ -217,13 +224,17 @@ class ApiClient {
             if ( isset( $args[ $k ] ) ) {
                 $v = $args[ $k ];
                 $arr = is_array( $v ) ? $v : ( is_string( $v ) ? preg_split( '/\s*,\s*/', trim( $v ) ) : [ $v ] );
-                $arr = array_filter( array_map( 'trim', array_map( 'strval', $arr ) ) );
-                if ( 'category' === $k || 'categories' === $k ) {
-                    $args['category[]'] = $arr;
-                    unset( $args['categories'], $args['category'] );
+                $arr = array_filter( array_map( 'intval', $arr ) );
+                if ( ! empty( $arr ) ) {
+                    if ( 'category' === $k || 'categories' === $k ) {
+                        $args['category'] = $arr;
+                        unset( $args['categories'] );
+                    } else {
+                        $args['type'] = $arr;
+                        unset( $args['types'] );
+                    }
                 } else {
-                    $args['type[]'] = $arr;
-                    unset( $args['types'], $args['type'] );
+                    unset( $args[ $k ] );
                 }
             }
         }
@@ -285,13 +296,17 @@ class ApiClient {
             if ( isset( $params[ $k ] ) ) {
                 $v = $params[ $k ];
                 $arr = is_array( $v ) ? $v : ( is_string( $v ) ? preg_split( '/\s*,\s*/', trim( $v ) ) : [ $v ] );
-                $arr = array_filter( array_map( 'trim', array_map( 'strval', $arr ) ) );
-                if ( 'category' === $k || 'categories' === $k ) {
-                    $params['category[]'] = $arr;
-                    unset( $params['categories'], $params['category'] );
+                $arr = array_filter( array_map( 'intval', $arr ) );
+                if ( ! empty( $arr ) ) {
+                    if ( 'category' === $k || 'categories' === $k ) {
+                        $params['category'] = $arr;
+                        unset( $params['categories'] );
+                    } else {
+                        $params['type'] = $arr;
+                        unset( $params['types'] );
+                    }
                 } else {
-                    $params['type[]'] = $arr;
-                    unset( $params['types'], $params['type'] );
+                    unset( $params[ $k ] );
                 }
             }
         }
