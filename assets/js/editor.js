@@ -472,7 +472,7 @@
                         ! importStatus ? el( Fragment, null,
                             // Initial confirmation state
                             el( 'h3', null, __( 'Import Pattern', 'wpkj-patterns-library' ) ),
-                            el( 'p', null, __( 'Download external images and videos to your media library?', 'wpkj-patterns-library' ) ),
+                            el( 'p', null, __( 'Download external images to your media library?', 'wpkj-patterns-library' ) ),
                             el( 'p', { style: { fontSize: '13px', color: '#666', marginTop: '8px' } }, 
                                 __( 'Note: Videos will be skipped and need manual replacement.', 'wpkj-patterns-library' ) 
                             ),
@@ -487,7 +487,7 @@
                                     }
                                 }, __( 'Cancel', 'wpkj-patterns-library' ) ),
                                 el( Button, { 
-                                    isSecondary: true,
+                                    isPrimary: true,
                                     onClick: async () => {
                                         // Import without sideload
                                         const pattern = confirmImportPattern;
@@ -536,9 +536,9 @@
                                             }, 3000 );
                                         }
                                     }
-                                }, __( 'No, Import Only', 'wpkj-patterns-library' ) ),
+                                }, __( 'Import pattern only', 'wpkj-patterns-library' ) ),
                                 el( Button, { 
-                                    isPrimary: true,
+                                    isSecondary: true,
                                     onClick: async () => {
                                         // Import with sideload
                                         const pattern = confirmImportPattern;
@@ -615,7 +615,7 @@
                                             }, 3000 );
                                         }
                                     }
-                                }, __( 'Yes, Download Media', 'wpkj-patterns-library' ) )
+                                }, __( 'Import pattern + Save images', 'wpkj-patterns-library' ) )
                             )
                         ) : el( Fragment, null,
                             // Progress/Result state

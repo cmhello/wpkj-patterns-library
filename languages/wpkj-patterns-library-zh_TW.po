@@ -1,11 +1,11 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: WPKJ Patterns Library 0.3.0\n"
+"Project-Id-Version: WPKJ Patterns Library 0.7.0\n"
 "POT-Creation-Date: 2026-02-06 17:12+0800\n"
-"PO-Revision-Date: 2026-02-06 17:34+0800\n"
+"PO-Revision-Date: 2026-02-06 17:40+0800\n"
 "Last-Translator: WordPress大学 <support@wpdaxue.com>\n"
-"Language-Team: Simplified Chinese\n"
-"Language: zh_CN\n"
+"Language-Team: Traditional Chinese\n"
+"Language: zh_TW\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -20,32 +20,32 @@ msgstr ""
 #: Admin/AdminActions.php:26 Admin/AdminActions.php:40
 #: Admin/AdminActions.php:51
 msgid "Insufficient permissions."
-msgstr "权限不足。"
+msgstr "權限不足。"
 
 # PHP strings
 #: Admin/Settings.php:12 Admin/Settings.php:13 Admin/Settings.php:55
 msgid "WPKJ Patterns Library"
-msgstr "WPKJ 样板库"
+msgstr "WPKJ 樣板庫"
 
 #: Admin/Settings.php:33
 msgid "Patterns Library Settings"
-msgstr "样板库设置"
+msgstr "樣板庫設定"
 
 #: Admin/Settings.php:34
 msgid "Configure API and caching for the Patterns Library."
-msgstr "配置样板库的 API 和缓存。"
+msgstr "設定樣板庫的 API 與快取。"
 
 #: Admin/Settings.php:37
 msgid "API Base URL"
-msgstr "API 基础地址"
+msgstr "API 基礎位址"
 
 #: Admin/Settings.php:42
 msgid "Cache TTL (seconds)"
-msgstr "缓存有效期（秒）"
+msgstr "快取有效期（秒）"
 
 #: Admin/Settings.php:47
 msgid "JWT Token (optional)"
-msgstr "JWT 令牌（可选）"
+msgstr "JWT 權杖（選填）"
 
 #: Admin/Settings.php:57
 msgid "Sync completed."
@@ -54,7 +54,7 @@ msgstr "同步完成。"
 #: Admin/Settings.php:61
 #, php-format
 msgid "Cache cleared. %d entries removed."
-msgstr "缓存已清理。已移除 %d 条记录。"
+msgstr "快取已清除。已移除 %d 條記錄。"
 
 #: Admin/Settings.php:81
 msgid "Sync Now"
@@ -62,39 +62,39 @@ msgstr "立即同步"
 
 #: Admin/Settings.php:82
 msgid "Clear Cache"
-msgstr "清理缓存"
+msgstr "清除快取"
 
 #: Admin/Settings.php:83
 msgid "Test Connectivity"
-msgstr "测试连接"
+msgstr "測試連線"
 
 #: Api/MediaSideloadController.php:65
 msgid "Empty content provided"
-msgstr "提供的空白内容"
+msgstr "提供的空白內容"
 
 #: Includes/Scheduler.php:26
 msgid "WPKJ PL Dependencies Status TTL"
-msgstr "WPKJ PL 依赖项状态 TTL"
+msgstr "WPKJ PL 相依項目狀態 TTL"
 
 #: assets/js/editor.js:434
 msgid "Downloading..."
-msgstr "下载中..."
+msgstr "下載中..."
 
 #: assets/js/editor.js:443 assets/js/editor.js:902
 msgid "Patterns Library"
-msgstr "样板库"
+msgstr "樣板庫"
 
 #: assets/js/editor.js:450
 msgid "Required Plugins"
-msgstr "必需插件"
+msgstr "必需外掛"
 
 #: assets/js/editor.js:453
 msgid "Ready"
-msgstr "就绪"
+msgstr "就緒"
 
 #: assets/js/editor.js:453
 msgid "Installed, inactive"
-msgstr "已安装，未激活"
+msgstr "已安裝，未啟用"
 
 #: assets/js/editor.js:453
 msgid "Missing"
@@ -102,28 +102,28 @@ msgstr "缺少"
 
 #: assets/js/editor.js:462
 msgid "Install All"
-msgstr "全部安装"
+msgstr "全部安裝"
 
 #: assets/js/editor.js:463
 msgid "Recheck"
-msgstr "重新检查"
+msgstr "重新檢查"
 
 #: assets/js/editor.js:464
 msgid "Manage Plugins"
-msgstr "管理插件"
+msgstr "管理外掛"
 
 # JS strings (editor.js)
 #: assets/js/editor.js:474
 msgid "Import Pattern"
-msgstr "导入样板"
+msgstr "匯入樣板"
 
 #: assets/js/editor.js:475
 msgid "Download external images to your media library?"
-msgstr "将外部图片下载到您的媒体库？"
+msgstr "將外部圖片下載到您的媒體庫？"
 
 #: assets/js/editor.js:477
 msgid "Note: Videos will be skipped and need manual replacement."
-msgstr "注意：视频将被跳过，需要手动替换。"
+msgstr "注意：影片將被跳過，需要手動替換。"
 
 #: assets/js/editor.js:488
 msgid "Cancel"
@@ -131,60 +131,60 @@ msgstr "取消"
 
 #: assets/js/editor.js:495
 msgid "Importing pattern..."
-msgstr "正在导入样板..."
+msgstr "正在匯入樣板..."
 
 #: assets/js/editor.js:521 assets/js/editor.js:576
 msgid "Pattern imported successfully!"
-msgstr "样板导入成功！"
+msgstr "樣板匯入成功！"
 
 #: assets/js/editor.js:531
 msgid "Import failed. Please try again."
-msgstr "导入失败。请重试。"
+msgstr "匯入失敗。請重試。"
 
 #: assets/js/editor.js:539
 msgid "Import pattern only"
-msgstr "仅导入样板"
+msgstr "僅匯入樣板"
 
 #: assets/js/editor.js:546
 msgid "Analyzing media..."
-msgstr "分析媒体…"
+msgstr "分析媒體..."
 
 #: assets/js/editor.js:579
 msgid "media files downloaded"
-msgstr "媒体文件已下载"
+msgstr "媒體檔案已下載"
 
 #: assets/js/editor.js:582
 msgid "failed"
-msgstr "失败了"
+msgstr "失敗"
 
 #: assets/js/editor.js:585
 msgid "video(s) need manual replacement"
-msgstr "视频需要手动更换"
+msgstr "影片需要手動替換"
 
 #: assets/js/editor.js:608
 msgid "Media download failed. Pattern imported with original URLs."
-msgstr "媒体文件下载失败。已使用原始URL导入样板。"
+msgstr "媒體檔案下載失敗。已使用原始 URL 匯入樣板。"
 
 #: assets/js/editor.js:618
 msgid "Import pattern + Save images"
-msgstr "导入样板 + 保存图片"
+msgstr "匯入樣板 + 儲存圖片"
 
 # JS strings (editor.js)
 #: assets/js/editor.js:644
 msgid "Patterns"
-msgstr "样板"
+msgstr "樣板"
 
 #: assets/js/editor.js:645
 msgid "Pages"
-msgstr "页面"
+msgstr "頁面"
 
 #: assets/js/editor.js:652
 msgid "Type and press Enter"
-msgstr "输入关键词搜索"
+msgstr "輸入後按 Enter"
 
 #: assets/js/editor.js:666
 msgid "Recent searches"
-msgstr "最近搜索"
+msgstr "最近搜尋"
 
 #: assets/js/editor.js:670 assets/js/editor.js:753
 msgid "Clear"
@@ -192,7 +192,7 @@ msgstr "清除"
 
 #: assets/js/editor.js:674
 msgid "Order by"
-msgstr "排序字段"
+msgstr "排序依據"
 
 #: assets/js/editor.js:679
 msgid "Date"
@@ -200,11 +200,11 @@ msgstr "日期"
 
 #: assets/js/editor.js:680
 msgid "Title"
-msgstr "标题"
+msgstr "標題"
 
 #: assets/js/editor.js:681
 msgid "Popular"
-msgstr "热门"
+msgstr "熱門"
 
 #: assets/js/editor.js:686
 msgid "Order"
@@ -217,27 +217,27 @@ msgstr "收藏"
 # JS strings (editor.js)
 #: assets/js/editor.js:698 assets/js/editor.js:757
 msgid "All Patterns"
-msgstr "全部样板"
+msgstr "全部樣板"
 
 #: assets/js/editor.js:700
 msgid "Types"
-msgstr "类型"
+msgstr "類型"
 
 #: assets/js/editor.js:713
 msgid "Categories"
-msgstr "分类"
+msgstr "分類"
 
 #: assets/js/editor.js:727
 msgid "Recent imports"
-msgstr "最近导入"
+msgstr "最近匯入"
 
 #: assets/js/editor.js:750 assets/js/editor.js:788
 msgid "Import"
-msgstr "导入"
+msgstr "匯入"
 
 #: assets/js/editor.js:784
 msgid "Preview"
-msgstr "预览"
+msgstr "預覽"
 
 #: assets/js/editor.js:789
 msgid "Favorite"
@@ -245,27 +245,12 @@ msgstr "收藏"
 
 #: assets/js/editor.js:825
 msgid "No results found."
-msgstr "未找到结果。"
+msgstr "未找到結果。"
 
 #: assets/js/editor.js:833
 msgid "Load more"
-msgstr "加载更多"
+msgstr "載入更多"
 
 #: assets/js/editor.js:833
 msgid "No more"
-msgstr "没有更多"
-
-#~ msgid "Search"
-#~ msgstr "搜索"
-
-#~ msgid "Insert"
-#~ msgstr "插入"
-
-#~ msgid "All Templates"
-#~ msgstr "全部模板"
-
-#~ msgid "Dependencies"
-#~ msgstr "依赖"
-
-#~ msgid "No dependencies"
-#~ msgstr "无依赖"
+msgstr "沒有更多"
