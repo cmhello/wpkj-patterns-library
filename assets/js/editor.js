@@ -67,7 +67,7 @@
 
     // Library plugin REST base helper (user favorites stored locally on this site)
     const fetchPL = async ( path, params = {}, opts = {} ) => {
-        const base = '/wp-json/wpkj-pl/v1';
+        const base = cfg.restUrl;
         const url = new URL( base + path, window.location.origin );
         const method = ( opts && opts.method ) ? opts.method : 'GET';
         let body;
@@ -905,26 +905,56 @@
             );
         };
 
-        const mountIntoLeft = () => {
-            const container = document.querySelector( '#editor .editor-header__center' );
-            if ( ! container ) return false;
-            const mount = document.createElement( 'div' );
-            mount.className = 'wpkj-pl-header-trigger';
-            // Insert at the beginning of the container
-            container.insertBefore( mount, container.lastChild );
-            const createRoot = wp.element && wp.element.createRoot ? wp.element.createRoot : null;
-            const render = wp.element && wp.element.render ? wp.element.render : null;
-            if ( createRoot ) {
-                createRoot( mount ).render( el( HeaderTrigger, null ) );
-            } else if ( render ) {
-                render( el( HeaderTrigger, null ), mount );
+        // The header exposes no SlotFill for its regions, so the trigger is attached
+        // imperatively. It targets .editor-header__toolbar because that region is
+        // rendered unconditionally, unlike .editor-header__center, which React fully
+        // unmounts whenever the top toolbar is enabled with a block selected.
+        const triggerNode = document.createElement( 'div' );
+        triggerNode.className = 'wpkj-pl-header-trigger';
+        let triggerRoot = null;
+        let attachedTo = null;
+
+        const isAttached = () => attachedTo && triggerNode.parentNode === attachedTo;
+
+        const syncTrigger = () => {
+            const container = document.querySelector( '#editor .editor-header__toolbar' );
+            if ( ! container ) {
+                attachedTo = null;
+                return;
             }
+            if ( attachedTo === container && isAttached() ) {
+                return;
+            }
+            // Append after the document tools so the trigger sits next to the inserter.
+            container.appendChild( triggerNode );
+            attachedTo = container;
+            if ( ! triggerRoot ) {
+                triggerRoot = wp.element.createRoot( triggerNode );
+                triggerRoot.render( el( HeaderTrigger, null ) );
+            }
+        };
+
+        let syncScheduled = false;
+        const observer = new MutationObserver( () => {
+            if ( isAttached() && attachedTo.isConnected ) return;
+            if ( syncScheduled ) return;
+            syncScheduled = true;
+            requestAnimationFrame( () => {
+                syncScheduled = false;
+                syncTrigger();
+            } );
+        } );
+
+        const startWatching = () => {
+            const editorRoot = document.getElementById( 'editor' );
+            if ( ! editorRoot ) return false;
+            observer.observe( editorRoot, { childList: true, subtree: true } );
+            syncTrigger();
             return true;
         };
 
-        // Single attempt, with a minimal delayed retry
-        if ( ! mountIntoLeft() ) {
-            setTimeout( mountIntoLeft, 300 );
+        if ( ! startWatching() ) {
+            setTimeout( startWatching, 300 );
         }
     } );
 } )( window.wp || {} );

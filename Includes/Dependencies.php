@@ -108,7 +108,7 @@ class Dependencies {
     /** Force recompute and cache status. */
     public function refresh_status() : array {
         $status = $this->compute_status();
-        set_transient( self::STATUS_TRANSIENT, $status, $this->get_status_ttl() );
+        ( new Cache() )->set( self::STATUS_TRANSIENT, $status, $this->get_status_ttl() );
         return $status;
     }
 

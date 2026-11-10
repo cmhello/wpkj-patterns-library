@@ -1,5 +1,7 @@
 .wpkj-pl-header-trigger {
-  margin-right: 2rem;
+  /* The header toolbar is a shrinking flex row; keep the trigger from being clipped. */
+  flex-shrink: 0;
+  margin-inline-start: 8px;
 }
 .wpkj-pl-modal {
   width: 90vw;
@@ -176,8 +178,8 @@
 }
 
 /* Ensure toolbar button aligns visually (optional enhancement) */
-.edit-post-header__toolbar .components-button[aria-label="Patterns"],
-.edit-post-header__toolbar .components-button.pat-library-button {
+.editor-header__toolbar .components-button[aria-label="Patterns"],
+.editor-header__toolbar .components-button.pat-library-button {
   font-weight: 600;
 }
 

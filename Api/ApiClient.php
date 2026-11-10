@@ -1,6 +1,8 @@
 <?php
 namespace WPKJ\PatternsLibrary\Api;
 
+use WPKJ\PatternsLibrary\Includes\Cache;
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
@@ -15,9 +17,16 @@ class ApiClient {
      */
     private $base_url;
 
+    /**
+     * Transient-backed cache shared by all requests made by this client.
+     * @var Cache
+     */
+    private $cache;
+
     /** Constructor: initialize base URL. */
     public function __construct() {
         $this->base_url = $this->get_base_url();
+        $this->cache    = new Cache();
     }
 
     /**
@@ -89,8 +98,7 @@ class ApiClient {
 
         $bypass = (bool) apply_filters( 'wpkj_patterns_library_bypass_cache', false, $path, $params );
         if ( ! $bypass ) {
-            // Try object cache first (Redis/Memcached if available)
-            $cached = wp_cache_get( $cache_key, 'wpkj_patterns_library' );
+            $cached = get_transient( $cache_key );
             if ( false !== $cached ) {
                 return $cached;
             }
@@ -116,8 +124,7 @@ class ApiClient {
         }
 
         $ttl = $this->get_cache_ttl( $path, $params );
-        // Set in object cache (with group for easy bulk clearing)
-        wp_cache_set( $cache_key, $data, 'wpkj_patterns_library', $ttl );
+        $this->cache->set( $cache_key, $data, $ttl );
         return $data;
     }
 
@@ -134,7 +141,7 @@ class ApiClient {
 
         $bypass = (bool) apply_filters( 'wpkj_patterns_library_bypass_cache', false, $path, $params_min );
         if ( ! $bypass ) {
-            $cached = wp_cache_get( $cache_key, 'wpkj_patterns_library' );
+            $cached = get_transient( $cache_key );
             if ( false !== $cached ) {
                 return $cached;
             }
@@ -176,7 +183,7 @@ class ApiClient {
         }
 
         $ttl = $this->get_cache_ttl( $path, $params_min );
-        wp_cache_set( $cache_key, $data, 'wpkj_patterns_library', $ttl );
+        $this->cache->set( $cache_key, $data, $ttl );
         return $data;
     }
 
@@ -345,12 +352,12 @@ class ApiClient {
 
     /**
      * Robust GET with simple rate limit and exponential backoff on 5xx.
-     * - Tracks last failure timestamp in object cache for 60s cooldown.
+     * - Tracks last failure timestamp in a transient for 60s cooldown.
      * - Retries up to 3 times with backoff 0.5s, 1s, 2s for 5xx.
      */
     private function robust_get( string $url, array $headers ) {
         $cool_key = 'wpkj_pl_cool_' . md5( parse_url( $url, PHP_URL_HOST ) . parse_url( $url, PHP_URL_PATH ) );
-        $cool_until = (int) wp_cache_get( $cool_key, 'wpkj_patterns_library' );
+        $cool_until = (int) get_transient( $cool_key );
         if ( $cool_until > time() ) {
             return new \WP_Error( 'wpkj_pl_rate_limited', 'Rate limited due to previous failures' );
         }
@@ -361,7 +368,7 @@ class ApiClient {
             $response = wp_remote_get( $url, [ 'headers' => $headers, 'timeout' => $timeouts[ $i ] ] );
             if ( is_wp_error( $response ) ) {
                 // Network error: set short cooldown and bail
-                wp_cache_set( $cool_key, time() + 30, 'wpkj_patterns_library', 60 );
+                $this->cache->set( $cool_key, time() + 30, 60 );
                 return $response;
             }
             $code = wp_remote_retrieve_response_code( $response );
@@ -378,7 +385,7 @@ class ApiClient {
             }
         }
         // After retries, set cooldown for 60s
-        wp_cache_set( $cool_key, time() + 60, 'wpkj_patterns_library', 60 );
+        $this->cache->set( $cool_key, time() + 60, 60 );
         return new \WP_Error( 'wpkj_pl_backoff_fail', 'Remote server error after retries' );
     }
 

@@ -52,6 +52,9 @@ class Assets {
         $config = [
             // Frontend only needs local REST nonce and context
             'restNonce'             => wp_create_nonce( 'wp_rest' ),
+            // Absolute namespace URL: on sub-directory multisites the REST root is
+            // per-site, so the client cannot derive it from window.location.origin.
+            'restUrl'               => untrailingslashit( rest_url( 'wpkj-pl/v1' ) ),
             'activeSlugs'           => $active_slugs,
             'canInstallPlugins'     => current_user_can( 'install_plugins' ),
             'adminUrlPluginInstall' => admin_url( 'plugin-install.php?tab=search&s=' ),

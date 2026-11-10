@@ -66,7 +66,7 @@ class Sync {
      */
     public function mark_synced() {
         $cache_ttl = (int) get_option( 'wpkj_patterns_library_cache_ttl', 900 );
-        set_transient( 'wpkj_pl_last_sync', time(), $cache_ttl );
+        ( new Cache() )->set( 'wpkj_pl_last_sync', time(), $cache_ttl );
     }
     
     /**

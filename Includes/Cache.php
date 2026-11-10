@@ -5,62 +5,75 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/**
+ * Transient-backed cache that also keeps an index of the keys it wrote.
+ *
+ * The index is what makes invalidation work on both storage backends: without
+ * it, clearing can only be done by scanning wp_options, which finds nothing
+ * when a persistent object cache is configured because transients then never
+ * touch the database.
+ */
 class Cache {
-    const PREFIX = 'wpkj_pl_';
-    const GROUP = 'wpkj_patterns_library';
+    const PREFIX      = 'wpkj_pl_';
+    const KEYS_OPTION = 'wpkj_pl_cache_keys';
+    const MAX_KEYS    = 300;
+
+    /** Store a value and remember its key so it can be invalidated later. */
+    public function set( string $key, $value, int $ttl ) : void {
+        set_transient( $key, $value, $ttl );
+        $this->track( $key );
+    }
 
     /**
-     * Clear all caches created by this plugin.
-     * Supports both object cache (Redis/Memcached) and transient fallback.
-     * Returns number of cache entries cleared.
+     * Clear all caches created by this plugin. Returns number of entries removed.
      */
     public function clear_all() : int {
         $deleted = 0;
 
-        // 1. Try to flush object cache group (if persistent cache is available)
-        if ( $this->is_object_cache_available() ) {
-            // Use wp_cache_flush_group if available (Redis Object Cache plugin)
-            if ( function_exists( 'wp_cache_flush_group' ) ) {
-                $result = wp_cache_flush_group( self::GROUP );
-                // Most implementations don't return count, assume success cleared many
-                return $result ? 100 : 0;
-            }
-            
-            // Fallback: wp_cache doesn't provide a way to list all keys in a group
-            // We can't reliably clear object cache without flush_group support
-            // Log a notice for developers
-            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log( 'WPKJ Patterns Library: Object cache detected but wp_cache_flush_group() not available. Cache may not be fully cleared.' );
+        // delete_transient() targets the object cache or wp_options depending
+        // on how the site is configured, so tracked keys cover both backends.
+        foreach ( array_keys( $this->get_keys() ) as $key ) {
+            if ( delete_transient( $key ) ) {
+                $deleted++;
             }
         }
 
-        // 2. Clear transient-based cache (fallback for non-object-cache setups)
+        // Entries written before key tracking existed are only reachable
+        // through the options table.
         $deleted += $this->clear_transients();
+
+        delete_option( self::KEYS_OPTION );
 
         return $deleted;
     }
 
-    /**
-     * Check if persistent object cache is available.
-     */
-    private function is_object_cache_available() : bool {
-        global $wp_object_cache;
-        
-        // Check if using persistent backend (not default transient-based cache)
-        if ( ! empty( $wp_object_cache ) && method_exists( $wp_object_cache, 'redis_status' ) ) {
-            return true; // Redis Object Cache
+    /** Add a key to the index, keeping it bounded to the most recent entries. */
+    private function track( string $key ) : void {
+        $keys = $this->get_keys();
+
+        if ( isset( $keys[ $key ] ) ) {
+            return;
         }
-        
-        if ( ! empty( $wp_object_cache ) && method_exists( $wp_object_cache, 'get_mc' ) ) {
-            return true; // Memcached
+
+        $keys[ $key ] = time();
+
+        if ( count( $keys ) > self::MAX_KEYS ) {
+            asort( $keys );
+            $keys = array_slice( $keys, -self::MAX_KEYS, null, true );
         }
-        
-        // Check for other object cache plugins
-        return wp_using_ext_object_cache();
+
+        // Autoload disabled: the index is read only on warmup and on clear.
+        update_option( self::KEYS_OPTION, $keys, false );
+    }
+
+    /** Indexed cache keys as key => last written timestamp. */
+    private function get_keys() : array {
+        $keys = get_option( self::KEYS_OPTION, [] );
+        return is_array( $keys ) ? $keys : [];
     }
 
     /**
-     * Clear transient-based cache (database fallback).
+     * Delete every wpkj_pl_* transient by scanning wp_options.
      * Returns number of transients deleted.
      */
     private function clear_transients() : int {
